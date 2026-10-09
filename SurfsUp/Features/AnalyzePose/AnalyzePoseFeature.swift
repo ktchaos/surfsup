@@ -3,6 +3,7 @@ import Foundation
 
 @Reducer
 struct AnalyzePoseFeature {
+    // MARK: - State
     @ObservableState
     struct State: Equatable {
         var access: Access = .unknown
@@ -50,6 +51,7 @@ struct AnalyzePoseFeature {
         case reviewReady
     }
 
+    // MARK: - Action
     enum Action: Equatable {
         case chooseTapped
         case accessResolved(PhotoLibraryAccess)
@@ -76,6 +78,7 @@ struct AnalyzePoseFeature {
         case analysis
     }
 
+    // MARK: - Reducer
     var body: some Reducer<State, Action> {
         Reduce { state, action in
             switch action {

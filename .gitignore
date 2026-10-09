@@ -1,5 +1,7 @@
 # Local feature specs. Kept on this machine only.
 specs/
+.cursor/
+.specify/
 
 # macOS
 .DS_Store
