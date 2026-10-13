@@ -89,41 +89,43 @@ struct VideoPlaybackView: UIViewRepresentable {
 
     func makeUIView(context: Context) -> PlayerHostView {
         let view = PlayerHostView()
-        let player = AVPlayer(url: url)
+        let item = AVPlayerItem(url: url)
+        let player = AVPlayer(playerItem: item)
         view.playerLayer.player = player
         view.playerLayer.videoGravity = .resizeAspect
+        let coordinator = context.coordinator
+        coordinator.player = player
+        coordinator.url = url
+        coordinator.desiredPlaying = isPlaying
+        coordinator.desiredPlayhead = playhead
+        coordinator.observeStatus(of: item)
         let interval = CMTime(seconds: UIConstants.AnalyzePose.playheadInterval, preferredTimescale: 600)
-        context.coordinator.player = player
-        context.coordinator.token = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { time in
+        coordinator.token = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { time in
             guard player.rate > 0 else { return }
-            context.coordinator.onPlayhead(time.seconds)
+            coordinator.onPlayhead(time.seconds)
         }
         return view
     }
 
     func updateUIView(_ view: PlayerHostView, context: Context) {
-        context.coordinator.onPlayhead = onPlayhead
+        let coordinator = context.coordinator
+        coordinator.onPlayhead = onPlayhead
+        coordinator.desiredPlaying = isPlaying
+        coordinator.desiredPlayhead = playhead
         guard let player = view.playerLayer.player else { return }
-        if player.currentItem == nil || context.coordinator.url != url {
-            player.replaceCurrentItem(with: AVPlayerItem(url: url))
-            context.coordinator.url = url
+        if player.currentItem == nil || coordinator.url != url {
+            let item = AVPlayerItem(url: url)
+            player.replaceCurrentItem(with: item)
+            coordinator.url = url
+            coordinator.resetAlignment()
+            coordinator.observeStatus(of: item)
         }
-        if isPlaying {
-            if player.rate == 0 { player.play() }
-        } else if player.rate != 0 {
-            player.pause()
-        }
-        guard !isPlaying else { return }
-        let current = player.currentTime().seconds
-        guard current.isFinite, abs(current - playhead) > UIConstants.AnalyzePose.seekTolerance else { return }
-        player.seek(
-            to: CMTime(seconds: playhead, preferredTimescale: 600),
-            toleranceBefore: .zero,
-            toleranceAfter: .zero
-        )
+        coordinator.apply(player: player)
     }
 
     static func dismantleUIView(_ view: PlayerHostView, coordinator: Coordinator) {
+        coordinator.statusObservation?.invalidate()
+        coordinator.statusObservation = nil
         if let token = coordinator.token {
             coordinator.player?.removeTimeObserver(token)
         }
@@ -135,9 +137,85 @@ struct VideoPlaybackView: UIViewRepresentable {
         var token: Any?
         var url: URL?
         var onPlayhead: (TimeInterval) -> Void
+        var desiredPlaying = false
+        var desiredPlayhead: TimeInterval = 0
+        var hasAlignedStart = false
+        var seekInFlight = false
+        var pendingSeek: PlaybackSync.Seek?
+        var seekGeneration = 0
+        var statusObservation: NSKeyValueObservation?
 
         init(onPlayhead: @escaping (TimeInterval) -> Void) {
             self.onPlayhead = onPlayhead
+        }
+
+        func resetAlignment() {
+            hasAlignedStart = false
+            seekInFlight = false
+            pendingSeek = nil
+            seekGeneration += 1
+        }
+
+        func observeStatus(of item: AVPlayerItem) {
+            statusObservation?.invalidate()
+            statusObservation = item.observe(\.status, options: [.initial, .new]) { [weak self] _, _ in
+                Task { @MainActor in
+                    guard let self, let player = self.player else { return }
+                    self.apply(player: player)
+                }
+            }
+        }
+
+        func apply(player: AVPlayer) {
+            let command = PlaybackSync.command(
+                itemReady: player.currentItem?.status == .readyToPlay,
+                isPlaying: desiredPlaying,
+                playhead: desiredPlayhead,
+                currentTime: player.currentTime().seconds,
+                hasAlignedStart: hasAlignedStart,
+                seekTolerance: UIConstants.AnalyzePose.seekTolerance
+            )
+            if command.markStartAligned {
+                hasAlignedStart = true
+            }
+            guard player.currentItem?.status == .readyToPlay else {
+                if player.rate != 0 { player.pause() }
+                return
+            }
+            if let seek = command.seek {
+                guard !seekInFlight || pendingSeek != seek else { return }
+                seekGeneration += 1
+                let generation = seekGeneration
+                seekInFlight = true
+                pendingSeek = seek
+                if player.rate != 0 { player.pause() }
+                let tolerances = PlaybackSync.tolerances(for: seek.precision)
+                player.seek(
+                    to: CMTime(seconds: seek.time, preferredTimescale: 600),
+                    toleranceBefore: tolerances.before,
+                    toleranceAfter: tolerances.after
+                ) { [weak self] finished in
+                    Task { @MainActor in
+                        guard let self, let player = self.player, generation == self.seekGeneration else { return }
+                        self.seekInFlight = false
+                        self.pendingSeek = nil
+                        if finished, seek.precision == .startOfClip {
+                            self.hasAlignedStart = true
+                        }
+                        self.apply(player: player)
+                    }
+                }
+                return
+            }
+            switch command.transport {
+            case .play:
+                guard !seekInFlight, player.rate == 0 else { return }
+                player.play()
+            case .pause:
+                if player.rate != 0 { player.pause() }
+            case nil:
+                break
+            }
         }
     }
 }
