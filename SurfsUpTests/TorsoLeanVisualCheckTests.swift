@@ -206,6 +206,71 @@ struct TorsoLeanVisualCheckTests {
         }
     }
 
+    @Test func recordedVideo1PauseSheetIsAccepted() throws {
+        let sheet = try TorsoLeanVisualCheck.decodeSheet(Data(video1PauseSheet.utf8))
+        let clip = try #require(sheet.clips.first)
+
+        #expect(sheet.clips.count == 1)
+        #expect(clip.clipDuration == 5.832)
+        #expect(clip.role == .usable)
+        #expect(clip.pauses.map(\.timestamp) == [0.381, 1.4, 2.3, 3.067, 5.267])
+        #expect(clip.pauses.map(\.expectedSign) == [.right, .right, .left, .left, .right])
+        #expect(clip.pauses.map(\.oppositeLean) == [false, true, false, true, false])
+        #expect(clip.pauses.allSatisfy { $0.imageReason == nil })
+    }
+
+    @Test func recordedVideo2PauseSheetIsAccepted() throws {
+        let sheet = try TorsoLeanVisualCheck.decodeSheet(Data(recordedPauseSheet.utf8))
+        let video1 = try #require(sheet.clips.first)
+        let video2 = try #require(sheet.clips.dropFirst().first)
+
+        #expect(sheet.clips.count == 5)
+        #expect(video1.clipDuration == 5.832)
+        #expect(video1.role == .usable)
+        #expect(video1.pauses.map(\.timestamp) == [0.381, 1.4, 2.3, 3.067, 5.267])
+        #expect(video1.pauses.map(\.expectedSign) == [.right, .right, .left, .left, .right])
+        #expect(video1.pauses.map(\.oppositeLean) == [false, true, false, true, false])
+        #expect(video1.pauses.allSatisfy { $0.imageReason == nil })
+
+        #expect(video2.clipDuration == 9.878)
+        #expect(video2.role == .usable)
+        #expect(video2.pauses.map(\.timestamp) == [3.267, 4.334, 6.139, 6.4, 9])
+        #expect(video2.pauses.map(\.expectedSign) == [.right, .right, .left, .left, .right])
+        #expect(video2.pauses.allSatisfy { $0.oppositeLean == false })
+        #expect(video2.pauses.allSatisfy { $0.imageReason == nil })
+    }
+
+    @Test func recordedVideo3AndVideo5PauseSheetIsAccepted() throws {
+        let sheet = try TorsoLeanVisualCheck.decodeSheet(Data(recordedPauseSheet.utf8))
+        let video3 = try #require(sheet.clips.first { $0.clipDuration == 13.734 })
+        let video5 = try #require(sheet.clips.first { $0.clipDuration == 37.289 })
+
+        #expect(video3.clipDuration == 13.734)
+        #expect(video3.role == .usable)
+        #expect(video3.pauses.map(\.timestamp) == [5.767, 6.107, 9.054, 9.189, 10.383])
+        #expect(video3.pauses.map(\.expectedSign) == [.right, .right, .none, .left, .left])
+        #expect(video3.pauses.allSatisfy { $0.oppositeLean == false })
+        #expect(video3.pauses[2].imageReason?.isEmpty == false)
+        #expect(video3.pauses.enumerated().allSatisfy { index, pause in
+            index == 2 ? pause.imageReason != nil : pause.imageReason == nil
+        })
+
+        #expect(video5.clipDuration == 37.289)
+        #expect(video5.role == .usable)
+        #expect(video5.pauses.map(\.timestamp) == [2.072, 11.594, 13.316, 16.341, 21.386])
+        #expect(video5.pauses.map(\.expectedSign) == [.left, .right, .right, .left, .left])
+        #expect(video5.pauses.allSatisfy { $0.oppositeLean == false })
+        #expect(video5.pauses.allSatisfy { $0.imageReason == nil })
+    }
+
+    @Test func recordedUncoveredVideo4PauseSheetIsAccepted() throws {
+        let sheet = try TorsoLeanVisualCheck.decodeSheet(Data(recordedPauseSheet.utf8))
+        let video4 = try #require(sheet.clips.first { $0.clipDuration == 4.517 })
+
+        #expect(video4.role == .uncovered)
+        #expect(video4.pauses.isEmpty)
+    }
+
     @Test func invalidPauseCountsAndImageReasonsAreRejected() {
         #expect(throws: TorsoLeanSheetError.usablePauseCount) {
             try TorsoLeanVisualCheck.score(
@@ -256,6 +321,80 @@ struct TorsoLeanVisualCheckTests {
         #expect(report.statement.contains("not a 3D body angle"))
         #expect(report.statement.contains("not an angle relative to the surfboard"))
     }
+
+    private let recordedPauseSheet = """
+    {
+      "clips": [
+        {
+          "clipDuration": 5.832,
+          "role": "usable",
+          "pauses": [
+            {"timestamp": 0.381, "expectedSign": "right", "oppositeLean": false},
+            {"timestamp": 1.400, "expectedSign": "right", "oppositeLean": true},
+            {"timestamp": 2.300, "expectedSign": "left", "oppositeLean": false},
+            {"timestamp": 3.067, "expectedSign": "left", "oppositeLean": true},
+            {"timestamp": 5.267, "expectedSign": "right", "oppositeLean": false}
+          ]
+        },
+        {
+          "clipDuration": 9.878,
+          "role": "usable",
+          "pauses": [
+            {"timestamp": 3.267, "expectedSign": "right", "oppositeLean": false},
+            {"timestamp": 4.334, "expectedSign": "right", "oppositeLean": false},
+            {"timestamp": 6.139, "expectedSign": "left", "oppositeLean": false},
+            {"timestamp": 6.400, "expectedSign": "left", "oppositeLean": false},
+            {"timestamp": 9.000, "expectedSign": "right", "oppositeLean": false}
+          ]
+        },
+        {
+          "clipDuration": 13.734,
+          "role": "usable",
+          "pauses": [
+            {"timestamp": 5.767, "expectedSign": "right", "oppositeLean": false},
+            {"timestamp": 6.107, "expectedSign": "right", "oppositeLean": false},
+            {"timestamp": 9.054, "expectedSign": "none", "imageReason": "The torso appears visually aligned and centered, with no clear left or right lean.", "oppositeLean": false},
+            {"timestamp": 9.189, "expectedSign": "left", "oppositeLean": false},
+            {"timestamp": 10.383, "expectedSign": "left", "oppositeLean": false}
+          ]
+        },
+        {
+          "clipDuration": 4.517,
+          "role": "uncovered",
+          "pauses": []
+        },
+        {
+          "clipDuration": 37.289,
+          "role": "usable",
+          "pauses": [
+            {"timestamp": 2.072, "expectedSign": "left", "oppositeLean": false},
+            {"timestamp": 11.594, "expectedSign": "right", "oppositeLean": false},
+            {"timestamp": 13.316, "expectedSign": "right", "oppositeLean": false},
+            {"timestamp": 16.341, "expectedSign": "left", "oppositeLean": false},
+            {"timestamp": 21.386, "expectedSign": "left", "oppositeLean": false}
+          ]
+        }
+      ]
+    }
+    """
+
+    private let video1PauseSheet = """
+    {
+      "clips": [
+        {
+          "clipDuration": 5.832,
+          "role": "usable",
+          "pauses": [
+            {"timestamp": 0.381, "expectedSign": "right", "oppositeLean": false},
+            {"timestamp": 1.400, "expectedSign": "right", "oppositeLean": true},
+            {"timestamp": 2.300, "expectedSign": "left", "oppositeLean": false},
+            {"timestamp": 3.067, "expectedSign": "left", "oppositeLean": true},
+            {"timestamp": 5.267, "expectedSign": "right", "oppositeLean": false}
+          ]
+        }
+      ]
+    }
+    """
 
     private enum Lean {
         case right, left, upright, branchCut

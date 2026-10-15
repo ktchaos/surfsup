@@ -19,9 +19,15 @@ struct PoseOverlayView: View {
                     playhead: playhead,
                     onPlayhead: onPlayhead
                 )
+                PlaybackTimeLabel(time: playhead)
+                    .frame(width: rect.width, height: rect.height, alignment: .topTrailing)
+                    .position(x: rect.midX, y: rect.midY)
+                    .allowsHitTesting(false)
                 Canvas { context, _ in
+                    let torsoPoints = ImagePlaneTorsoLean.storedPoints(at: playhead, in: timeline)
                     guard let observation = PlayheadLookup.observation(at: playhead, in: timeline),
                           let body = observation.body else {
+                        drawTorsoSegment(context: &context, points: torsoPoints, in: rect)
                         return
                     }
                     let points = Dictionary(uniqueKeysWithValues: body.landmarks.map { ($0.joint, $0) })
@@ -47,6 +53,7 @@ struct PoseOverlayView: View {
                         )
                         context.fill(Path(ellipseIn: dot), with: .color(AppColors.pose))
                     }
+                    drawTorsoSegment(context: &context, points: torsoPoints, in: rect)
                 }
                 .allowsHitTesting(false)
             }
@@ -58,6 +65,93 @@ struct PoseOverlayView: View {
 /// Maps upright, bottom-left normalized landmarks into the same aspect-fit rect as playback.
 /// Detection already applied `SelectedClip.displayTransform` as the Vision orientation,
 /// so the stored points match the upright picture the player shows.
+private struct PlaybackTimeLabel: View {
+    var time: TimeInterval
+
+    var body: some View {
+        Text(PlaybackTimestamp.label(for: time))
+            .font(.caption2.monospacedDigit())
+            .foregroundStyle(AppColors.text)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(AppColors.background.opacity(0.55), in: RoundedRectangle(cornerRadius: 4))
+            .padding(6)
+    }
+}
+
+private let torsoNeckColor = Color(red: 0.25, green: 0.95, blue: 1)
+private let torsoRootColor = Color(red: 1, green: 0.45, blue: 0.2)
+
+private func drawTorsoSegment(
+    context: inout GraphicsContext,
+    points: ImagePlaneTorsoPoints,
+    in rect: CGRect
+) {
+    let neck = points.neck.map { PoseLayout.point($0, in: rect) }
+    let root = points.root.map { PoseLayout.point($0, in: rect) }
+    if let neck, let root {
+        var segment = Path()
+        segment.move(to: neck)
+        segment.addLine(to: root)
+        context.stroke(segment, with: .color(.white), lineWidth: 1.5)
+    }
+    if let neck {
+        strokeMarker(context: &context, at: neck, color: torsoNeckColor, shape: .circle)
+        drawMarkerLabel("NECK", at: neck, above: true, color: torsoNeckColor, in: rect, context: &context)
+    }
+    if let root {
+        strokeMarker(context: &context, at: root, color: torsoRootColor, shape: .square)
+        drawMarkerLabel("ROOT / HIP CENTER", at: root, above: false, color: torsoRootColor, in: rect, context: &context)
+    }
+}
+
+private enum TorsoMarkerShape {
+    case circle
+    case square
+}
+
+private func strokeMarker(
+    context: inout GraphicsContext,
+    at center: CGPoint,
+    color: Color,
+    shape: TorsoMarkerShape
+) {
+    let side: CGFloat = 14
+    let bounds = CGRect(x: center.x - side / 2, y: center.y - side / 2, width: side, height: side)
+    let path = shape == .circle ? Path(ellipseIn: bounds) : Path(roundedRect: bounds, cornerRadius: 2)
+    context.stroke(path, with: .color(color), lineWidth: 2)
+}
+
+private func drawMarkerLabel(
+    _ title: String,
+    at marker: CGPoint,
+    above: Bool,
+    color: Color,
+    in rect: CGRect,
+    context: inout GraphicsContext
+) {
+    let resolved = context.resolve(
+        Text(title)
+            .font(.system(size: 9, weight: .bold))
+            .foregroundStyle(color)
+    )
+    let size = resolved.measure(in: CGSize(width: 160, height: 16))
+    let gap: CGFloat = 8
+    var originY = above ? marker.y - gap - size.height : marker.y + gap
+    if originY < rect.minY {
+        originY = min(marker.y + gap, rect.maxY - size.height)
+    }
+    if originY + size.height > rect.maxY {
+        originY = max(rect.minY, marker.y - gap - size.height)
+    }
+    let maxX = max(rect.minX, rect.maxX - size.width)
+    let originX = min(max(marker.x - size.width / 2, rect.minX), maxX)
+    let origin = CGPoint(x: originX, y: originY)
+    let background = CGRect(x: origin.x - 3, y: origin.y - 1, width: size.width + 6, height: size.height + 2)
+    context.fill(Path(roundedRect: background, cornerRadius: 3), with: .color(.black.opacity(0.6)))
+    context.draw(resolved, at: CGPoint(x: background.midX, y: background.midY), anchor: .center)
+}
+
 enum PoseLayout {
     static func aspectFit(content: CGSize, in bounds: CGSize) -> CGRect {
         guard content.width > 0, content.height > 0, bounds.width > 0, bounds.height > 0 else {

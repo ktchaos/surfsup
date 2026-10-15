@@ -17,18 +17,35 @@ nonisolated struct ImagePlaneTorsoSample: Equatable, Sendable {
     }
 }
 
+/// The stored `neck` and `root` at one playhead time. A missing joint stays nil.
+nonisolated struct ImagePlaneTorsoPoints: Equatable, Sendable {
+    var neck: Landmark?
+    var root: Landmark?
+
+    /// A drawable segment exists only when both stored landmarks exist.
+    var drawsSegment: Bool { neck != nil && root != nil }
+}
+
 /// Reads a finished pose timeline and does not modify it.
 nonisolated enum ImagePlaneTorsoLean {
+    /// The same `neck` and `root` `sample` reads. Does not invent a missing joint.
+    static func storedPoints(at time: TimeInterval, in timeline: PoseTimeline) -> ImagePlaneTorsoPoints {
+        guard let observation = PlayheadLookup.observation(at: time, in: timeline),
+              let body = observation.body
+        else {
+            return ImagePlaneTorsoPoints(neck: nil, root: nil)
+        }
+        return ImagePlaneTorsoPoints(
+            neck: body.landmarks.first { $0.joint == .neck },
+            root: body.landmarks.first { $0.joint == .root }
+        )
+    }
+
     /// Returns no sample when the observation, body, neck, or root is missing,
     /// or when the two stored points are exactly equal.
     static func sample(at time: TimeInterval, in timeline: PoseTimeline) -> ImagePlaneTorsoSample? {
-        guard let observation = PlayheadLookup.observation(at: time, in: timeline),
-              let body = observation.body,
-              let neck = body.landmarks.first(where: { $0.joint == .neck }),
-              let root = body.landmarks.first(where: { $0.joint == .root })
-        else {
-            return nil
-        }
+        let points = storedPoints(at: time, in: timeline)
+        guard let neck = points.neck, let root = points.root else { return nil }
 
         let rightward = neck.x - root.x
         let upward = neck.y - root.y

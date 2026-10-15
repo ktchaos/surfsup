@@ -19,7 +19,7 @@ nonisolated struct PauseClip: Equatable, Sendable, Decodable {
     var role: Role
     var pauses: [PauseEntry]
 
-    enum Role: String, Equatable, Sendable, Decodable {
+    enum Role: String, Equatable, Sendable, Codable {
         case usable
         case uncovered
     }
@@ -75,17 +75,17 @@ nonisolated struct PauseEntry: Equatable, Sendable, Decodable {
     }
 }
 
-nonisolated struct UncoveredRange: Equatable, Sendable {
+nonisolated struct UncoveredRange: Equatable, Sendable, Codable {
     var start: TimeInterval
     var end: TimeInterval
 }
 
-nonisolated struct PauseResult: Equatable, Sendable {
+nonisolated struct PauseResult: Equatable, Sendable, Codable {
     var timestamp: TimeInterval
     var outcome: Outcome
     var reason: String
 
-    enum Outcome: Equatable, Sendable {
+    enum Outcome: String, Equatable, Sendable, Codable {
         case match
         case mismatch
         case unassessable
@@ -93,7 +93,7 @@ nonisolated struct PauseResult: Equatable, Sendable {
     }
 }
 
-nonisolated struct TorsoLeanClipReport: Equatable, Sendable {
+nonisolated struct TorsoLeanClipReport: Equatable, Sendable, Codable {
     var clipDuration: TimeInterval
     var role: PauseClip.Role
     var pauseResults: [PauseResult]
@@ -104,12 +104,12 @@ nonisolated struct TorsoLeanClipReport: Equatable, Sendable {
     var uncoveredFraction: Double
     var statement: String
 
-    enum SignCheck: Equatable, Sendable {
+    enum SignCheck: String, Equatable, Sendable, Codable {
         case passed
         case failed
     }
 
-    enum OppositeLeanCheck: Equatable, Sendable {
+    enum OppositeLeanCheck: String, Equatable, Sendable, Codable {
         case passed
         case failed
         case notExercised
