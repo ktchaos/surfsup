@@ -8,7 +8,9 @@ specs/
 
 # Xcode
 build/
+.build/
 DerivedData/
+*.swiftpm/
 *.xcuserstate
 xcuserdata/
 *.moved-aside
