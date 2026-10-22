@@ -13,6 +13,8 @@
 		A10000000000000000000023 /* CasePaths in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000021 /* CasePaths */; };
 		A10000000000000000000024 /* Dependencies in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000026 /* Dependencies */; };
 		A10000000000000000000025 /* CasePaths in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000027 /* CasePaths */; };
+		A10000000000000000000028 /* PerceptionCore in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000040 /* PerceptionCore */; };
+		A10000000000000000000029 /* PerceptionCore in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000041 /* PerceptionCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -92,6 +94,7 @@
 				A10000000000000000000004 /* ComposableArchitecture in Frameworks */,
 				A10000000000000000000022 /* Dependencies in Frameworks */,
 				A10000000000000000000023 /* CasePaths in Frameworks */,
+				A10000000000000000000028 /* PerceptionCore in Frameworks */,
 			);
 		};
 		CB4493563076E5F900919988 /* Frameworks */ = {
@@ -100,6 +103,7 @@
 				A10000000000000000000005 /* ComposableArchitecture in Frameworks */,
 				A10000000000000000000024 /* Dependencies in Frameworks */,
 				A10000000000000000000025 /* CasePaths in Frameworks */,
+				A10000000000000000000029 /* PerceptionCore in Frameworks */,
 			);
 		};
 		CB4493603076E5F900919988 /* Frameworks */ = {
@@ -195,6 +199,7 @@
 				A10000000000000000000002 /* ComposableArchitecture */,
 				A10000000000000000000020 /* Dependencies */,
 				A10000000000000000000021 /* CasePaths */,
+				A10000000000000000000040 /* PerceptionCore */,
 			);
 			productName = SurfsUp;
 			productReference = CB44934C3076E5F800919988 /* SurfsUp.app */;
@@ -221,6 +226,7 @@
 				A10000000000000000000003 /* ComposableArchitecture */,
 				A10000000000000000000026 /* Dependencies */,
 				A10000000000000000000027 /* CasePaths */,
+				A10000000000000000000041 /* PerceptionCore */,
 			);
 			productName = SurfsUpTests;
 			productReference = CB4493593076E5F900919988 /* SurfsUpTests.xctest */;
@@ -937,6 +943,14 @@
 		A10000000000000000000027 /* CasePaths */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = CasePaths;
+		};
+		A10000000000000000000040 /* PerceptionCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PerceptionCore;
+		};
+		A10000000000000000000041 /* PerceptionCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PerceptionCore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
