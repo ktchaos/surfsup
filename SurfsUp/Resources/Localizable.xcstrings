@@ -106,6 +106,48 @@
         }
       }
     },
+    "importOriginalVideo" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "da" : { "stringUnit" : { "state" : "translated", "value" : "Importér den originale video" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Originalvideo importieren" } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Import original video" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Importar el video original" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Importer la vidéo originale" } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Importa il video originale" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "元のビデオを読み込む" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "원본 비디오 가져오기" } },
+        "nl" : { "stringUnit" : { "state" : "translated", "value" : "Originele video importeren" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Importuj oryginalny film" } },
+        "pt" : { "stringUnit" : { "state" : "translated", "value" : "Importar o vídeo original" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Импортировать исходное видео" } },
+        "sv" : { "stringUnit" : { "state" : "translated", "value" : "Importera originalvideon" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Özgün videoyu içe aktar" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "导入原始视频" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "匯入原始影片" } }
+      }
+    },
+    "sourceFileMismatch" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "da" : { "stringUnit" : { "state" : "translated", "value" : "Den valgte fil matcher ikke den planlagte video." } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Die ausgewählte Datei entspricht nicht dem geplanten Video." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The selected file does not match the scheduled video." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "El archivo seleccionado no coincide con el video programado." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le fichier sélectionné ne correspond pas à la vidéo prévue." } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Il file selezionato non corrisponde al video previsto." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "選択したファイルは予定されたビデオと一致しません。" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "선택한 파일이 예약된 비디오와 일치하지 않습니다." } },
+        "nl" : { "stringUnit" : { "state" : "translated", "value" : "Het geselecteerde bestand komt niet overeen met de geplande video." } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Wybrany plik nie pasuje do zaplanowanego filmu." } },
+        "pt" : { "stringUnit" : { "state" : "translated", "value" : "O ficheiro selecionado não corresponde ao vídeo agendado." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Выбранный файл не совпадает с запланированным видео." } },
+        "sv" : { "stringUnit" : { "state" : "translated", "value" : "Den valda filen matchar inte den schemalagda videon." } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Seçilen dosya planlanan videoyla eşleşmiyor." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "所选文件与预定视频不一致。" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "所選檔案與預定影片不一致。" } }
+      }
+    },
     "analyzing" : {
       "extractionState" : "manual",
       "localizations" : {
