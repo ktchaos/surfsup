@@ -27,6 +27,7 @@ nonisolated struct PersistenceClient: Sendable {
     var list: @Sendable () async -> [SavedRunSummary]
     var open: @Sendable (UUID) async -> Result<(SelectedClip, PoseTimeline), PersistenceOpenFailure>
     var writeFinished: @Sendable (SelectedClip, EvidenceRecord) async -> SavedRunWrite
+    var remove: @Sendable (UUID) async -> Bool
 
     static let live = PersistenceClient(
         list: {
@@ -37,13 +38,17 @@ nonisolated struct PersistenceClient: Sendable {
         },
         writeFinished: { clip, record in
             await SavedRunStore.writeFinished(clip: clip, record: record, in: EvidenceFileWriter.storageDirectory())
+        },
+        remove: { id in
+            await SavedRunStore.removeReporting(id: id, in: EvidenceFileWriter.storageDirectory())
         }
     )
 
     static let test = PersistenceClient(
         list: { [] },
         open: { _ in .failure(.videoUnavailable) },
-        writeFinished: { _, _ in SavedRunWrite(id: nil, evidenceMissing: true) }
+        writeFinished: { _, _ in SavedRunWrite(id: nil, evidenceMissing: true) },
+        remove: { _ in false }
     )
 }
 
@@ -149,7 +154,7 @@ nonisolated enum SavedRunStore {
         return .success((clip, timeline))
     }
 
-    /// Deletes this run's siblings. Not part of `PersistenceClient`.
+    /// Deletes this run's siblings. Not the user-facing `PersistenceClient.remove`.
     static func remove(id: UUID, in directory: URL) {
         let files = (try? FileManager.default.contentsOfDirectory(
             at: directory,
@@ -158,6 +163,13 @@ nonisolated enum SavedRunStore {
         for url in files where url.deletingPathExtension().lastPathComponent == id.uuidString {
             try? FileManager.default.removeItem(at: url)
         }
+    }
+
+    /// Deletes that UUID's stem, then reports whether `list` still contains it.
+    static func removeReporting(id: UUID, in directory: URL) async -> Bool {
+        remove(id: id, in: directory)
+        let listed = await list(in: directory)
+        return !listed.contains { $0.id == id }
     }
 
     private static func videoExtension(for url: URL) -> String {

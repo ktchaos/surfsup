@@ -214,6 +214,114 @@ struct PersistenceClientTests {
         #expect(namesAfter.filter { $0.hasPrefix(id.uuidString) }.isEmpty)
     }
 
+    @Test func removeReportingDropsOneTripleAndLeavesTheOther() async throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        #expect(!directory.path.contains("PoseEvidence"))
+        let record = try makeRecord(clipDuration: 2)
+        let firstClip = try makeClip(named: "keep-a.mov", bytes: Data("video-a".utf8))
+        let secondClip = try makeClip(named: "keep-b.mov", bytes: Data("video-b".utf8))
+        defer {
+            try? FileManager.default.removeItem(at: firstClip.url.deletingLastPathComponent())
+            try? FileManager.default.removeItem(at: secondClip.url.deletingLastPathComponent())
+        }
+        let first = await SavedRunStore.writeFinished(clip: firstClip, record: record, in: directory)
+        let second = await SavedRunStore.writeFinished(clip: secondClip, record: record, in: directory)
+        let firstID = try #require(first.id)
+        let secondID = try #require(second.id)
+
+        let removed = await SavedRunStore.removeReporting(id: firstID, in: directory)
+        #expect(removed == true)
+        let listed = await SavedRunStore.list(in: directory)
+        #expect(listed.map(\.id) == [secondID])
+        for ext in ["json", "sidecar", "mov"] {
+            let other = directory.appendingPathComponent(secondID.uuidString).appendingPathExtension(ext)
+            #expect(FileManager.default.fileExists(atPath: other.path))
+            let gone = directory.appendingPathComponent(firstID.uuidString).appendingPathExtension(ext)
+            #expect(!FileManager.default.fileExists(atPath: gone.path))
+        }
+    }
+
+    @Test func removeReportingSucceedsWhenTheVideoIsAlreadyGone() async throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        #expect(!directory.path.contains("PoseEvidence"))
+        let clip = try makeClip(named: "missing.mov", bytes: Data("video".utf8))
+        defer { try? FileManager.default.removeItem(at: clip.url.deletingLastPathComponent()) }
+        let written = await SavedRunStore.writeFinished(
+            clip: clip,
+            record: try makeRecord(clipDuration: 2),
+            in: directory
+        )
+        let id = try #require(written.id)
+        let video = directory.appendingPathComponent(id.uuidString).appendingPathExtension("mov")
+        try FileManager.default.removeItem(at: video)
+
+        let removed = await SavedRunStore.removeReporting(id: id, in: directory)
+        #expect(removed == true)
+        #expect(!FileManager.default.fileExists(
+            atPath: directory.appendingPathComponent(id.uuidString).appendingPathExtension("json").path
+        ))
+        #expect(!FileManager.default.fileExists(
+            atPath: directory.appendingPathComponent(id.uuidString).appendingPathExtension("sidecar").path
+        ))
+        let listed = await SavedRunStore.list(in: directory)
+        #expect(!listed.contains { $0.id == id })
+    }
+
+    @Test func removeReportingLeavesALeftoverJSONWithADifferentStem() async throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let clip = try makeClip(named: "listed.mov", bytes: Data("listed".utf8))
+        defer { try? FileManager.default.removeItem(at: clip.url.deletingLastPathComponent()) }
+        let written = await SavedRunStore.writeFinished(
+            clip: clip,
+            record: try makeRecord(clipDuration: 2),
+            in: directory
+        )
+        let listedID = try #require(written.id)
+        let leftoverID = UUID(uuidString: "00000000-0000-0000-0000-000000000099")!
+        #expect(leftoverID != listedID)
+        let leftover = directory.appendingPathComponent(leftoverID.uuidString).appendingPathExtension("json")
+        try Data("{\"leftover\":true}".utf8).write(to: leftover)
+
+        let removed = await SavedRunStore.removeReporting(id: listedID, in: directory)
+        #expect(removed == true)
+        #expect(FileManager.default.fileExists(atPath: leftover.path))
+        let listed = await SavedRunStore.list(in: directory)
+        #expect(listed.isEmpty)
+        #expect(!listed.contains { $0.id == leftoverID })
+    }
+
+    @Test func removeReportingLeavesTheOtherVideoBytesWhenDurationsMatch() async throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let record = try makeRecord(clipDuration: 2)
+        let firstBytes = Data("alpha-bytes".utf8)
+        let secondBytes = Data("beta-bytes-different".utf8)
+        #expect(firstBytes != secondBytes)
+        let firstClip = try makeClip(named: "same-duration-a.mov", bytes: firstBytes)
+        let secondClip = try makeClip(named: "same-duration-b.mov", bytes: secondBytes)
+        defer {
+            try? FileManager.default.removeItem(at: firstClip.url.deletingLastPathComponent())
+            try? FileManager.default.removeItem(at: secondClip.url.deletingLastPathComponent())
+        }
+        let first = await SavedRunStore.writeFinished(clip: firstClip, record: record, in: directory)
+        let second = await SavedRunStore.writeFinished(clip: secondClip, record: record, in: directory)
+        let firstID = try #require(first.id)
+        let secondID = try #require(second.id)
+        #expect(firstClip.duration == secondClip.duration)
+
+        let removed = await SavedRunStore.removeReporting(id: firstID, in: directory)
+        #expect(removed == true)
+        let keptVideo = directory.appendingPathComponent(secondID.uuidString).appendingPathExtension("mov")
+        let kept = try Data(contentsOf: keptVideo)
+        #expect(kept == secondBytes)
+        #expect(!FileManager.default.fileExists(
+            atPath: directory.appendingPathComponent(firstID.uuidString).appendingPathExtension("mov").path
+        ))
+    }
+
     private func makeTempDirectory() throws -> URL {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("PersistenceClientTests-\(UUID().uuidString)", isDirectory: true)

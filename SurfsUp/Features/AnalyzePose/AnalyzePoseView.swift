@@ -45,6 +45,25 @@ struct AnalyzePoseView: View {
             onCompletion: importOriginal
         )
         .onAppear { store.send(.appeared) }
+        .confirmationDialog(
+            Text("deleteReviewMessage"),
+            isPresented: Binding(
+                get: { store.pendingDeletionID != nil },
+                set: { isPresented in
+                    if !isPresented, store.pendingDeletionID != nil {
+                        store.send(.deleteDeclined)
+                    }
+                }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("deleteReviewConfirm", role: .destructive) {
+                store.send(.deleteConfirmed)
+            }
+            Button("cancel", role: .cancel) {
+                store.send(.deleteDeclined)
+            }
+        }
     }
 
     @ViewBuilder
@@ -122,15 +141,25 @@ struct AnalyzePoseView: View {
             Text("savedReviews")
                 .font(Typography.body)
             ForEach(store.savedRuns) { summary in
-                Button {
-                    store.send(.reopenTapped(summary.id))
-                } label: {
-                    VStack(alignment: .leading, spacing: AppConstants.UI.spacing) {
-                        Text(verbatim: summary.displayName)
-                        Text(summary.finishedAt, format: Date.FormatStyle(date: .abbreviated, time: .shortened))
+                HStack(spacing: AppConstants.UI.spacing) {
+                    Button {
+                        store.send(.reopenTapped(summary.id))
+                    } label: {
+                        VStack(alignment: .leading, spacing: AppConstants.UI.spacing) {
+                            Text(verbatim: summary.displayName)
+                            Text(summary.finishedAt, format: Date.FormatStyle(date: .abbreviated, time: .shortened))
+                        }
                     }
+                    .frame(minHeight: AppConstants.UI.controlHeight, alignment: .leading)
+                    Button {
+                        store.send(.deleteTapped(summary.id))
+                    } label: {
+                        Label("deleteReview", systemImage: "trash")
+                    }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.bordered)
+                    .frame(minHeight: AppConstants.UI.controlHeight)
                 }
-                .frame(minHeight: AppConstants.UI.controlHeight, alignment: .leading)
             }
         }
     }

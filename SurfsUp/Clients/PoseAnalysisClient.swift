@@ -5,7 +5,7 @@ import Vision
 
 nonisolated enum AnalysisUpdate: Equatable, Sendable {
     case progress(framesCompleted: Int, framesTotal: Int?)
-    case finished(PoseTimeline, evidenceMissing: Bool)
+    case finished(PoseTimeline, evidenceMissing: Bool, savedRunID: UUID?)
 }
 
 nonisolated enum PoseAnalysisError: Error, Equatable {
@@ -122,7 +122,7 @@ nonisolated enum PoseAnalysisLive {
         }
         let evidenceMissing = written.evidenceMissing
 
-        continuation.yield(.finished(timeline, evidenceMissing: evidenceMissing))
+        continuation.yield(.finished(timeline, evidenceMissing: evidenceMissing, savedRunID: written.id))
         continuation.finish()
     }
 
