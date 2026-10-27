@@ -98,11 +98,11 @@ private func drawTorsoSegment(
     }
     if let neck {
         strokeMarker(context: &context, at: neck, color: torsoNeckColor, shape: .circle)
-        drawMarkerLabel("NECK", at: neck, above: true, color: torsoNeckColor, in: rect, context: &context)
+        drawMarkerLabel(Text("overlayNeck"), at: neck, above: true, color: torsoNeckColor, in: rect, context: &context)
     }
     if let root {
         strokeMarker(context: &context, at: root, color: torsoRootColor, shape: .square)
-        drawMarkerLabel("ROOT / HIP CENTER", at: root, above: false, color: torsoRootColor, in: rect, context: &context)
+        drawMarkerLabel(Text("overlayRoot"), at: root, above: false, color: torsoRootColor, in: rect, context: &context)
     }
 }
 
@@ -124,7 +124,7 @@ private func strokeMarker(
 }
 
 private func drawMarkerLabel(
-    _ title: String,
+    _ title: Text,
     at marker: CGPoint,
     above: Bool,
     color: Color,
@@ -132,7 +132,7 @@ private func drawMarkerLabel(
     context: inout GraphicsContext
 ) {
     let resolved = context.resolve(
-        Text(title)
+        title
             .font(.system(size: 9, weight: .bold))
             .foregroundStyle(color)
     )
