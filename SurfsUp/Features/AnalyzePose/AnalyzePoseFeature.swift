@@ -67,6 +67,8 @@ struct AnalyzePoseFeature {
         case playTapped
         case pauseTapped
         case playheadMoved(TimeInterval)
+        case stepBackwardTapped
+        case stepForwardTapped
         case delegate(Delegate)
     }
 
@@ -76,6 +78,22 @@ struct AnalyzePoseFeature {
 
     private nonisolated enum CancelID: Hashable, Sendable {
         case analysis
+    }
+
+    /// Pauses, then moves the existing playhead by one frame. No new state.
+    private static func step(_ direction: FrameStep.Direction, state: inout State) -> Effect<Action> {
+        guard state.session.kind == .review,
+              let clip = state.session.clip,
+              let frame = FrameStep.duration(nominalFrameRate: clip.nominalFrameRate)
+        else { return .none }
+        state.isPlaying = false
+        state.playhead = FrameStep.target(
+            from: state.playhead,
+            direction: direction,
+            frameDuration: frame,
+            clipDuration: clip.duration
+        )
+        return .none
     }
 
     // MARK: - Reducer
@@ -245,6 +263,12 @@ struct AnalyzePoseFeature {
                 let upper = max(duration, 0)
                 state.playhead = min(max(0, time), upper)
                 return .none
+
+            case .stepBackwardTapped:
+                return Self.step(.backward, state: &state)
+
+            case .stepForwardTapped:
+                return Self.step(.forward, state: &state)
 
             case .delegate:
                 return .none

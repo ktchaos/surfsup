@@ -178,13 +178,27 @@ struct AnalyzePoseView: View {
     }
 
     private func playbackControls(duration: TimeInterval) -> some View {
-        VStack(spacing: AppConstants.UI.spacing) {
+        let canStep = store.session.clip
+            .map { FrameStep.duration(nominalFrameRate: $0.nominalFrameRate) != nil } ?? false
+        return VStack(spacing: AppConstants.UI.spacing) {
             HStack(spacing: AppConstants.UI.spacing) {
+                Button { store.send(.stepBackwardTapped) } label: {
+                    Label("stepBackward", systemImage: "backward.frame")
+                }
+                .labelStyle(.iconOnly)
+                .buttonStyle(.bordered)
+                .disabled(!canStep)
                 Button("play") { store.send(.playTapped) }
                     .buttonStyle(.borderedProminent)
                     .tint(AppColors.accent)
                 Button("pause") { store.send(.pauseTapped) }
                     .buttonStyle(.bordered)
+                Button { store.send(.stepForwardTapped) } label: {
+                    Label("stepForward", systemImage: "forward.frame")
+                }
+                .labelStyle(.iconOnly)
+                .buttonStyle(.bordered)
+                .disabled(!canStep)
             }
             .frame(minHeight: AppConstants.UI.controlHeight)
             Slider(

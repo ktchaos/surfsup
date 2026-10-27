@@ -29,13 +29,20 @@ nonisolated struct PlaybackSync: Equatable, Sendable {
         static let wait = Command(transport: nil, seek: nil, markStartAligned: false)
     }
 
+    /// Half a frame when the clip has a frame duration, otherwise the start-alignment tolerance.
+    static func pausedSeekThreshold(frameDuration: TimeInterval?, seekTolerance: TimeInterval) -> TimeInterval {
+        guard let frameDuration else { return seekTolerance }
+        return frameDuration / 2
+    }
+
     static func command(
         itemReady: Bool,
         isPlaying: Bool,
         playhead: TimeInterval,
         currentTime: TimeInterval,
         hasAlignedStart: Bool,
-        seekTolerance: TimeInterval
+        seekTolerance: TimeInterval,
+        frameDuration: TimeInterval?
     ) -> Command {
         guard itemReady else { return .wait }
 
@@ -57,12 +64,14 @@ nonisolated struct PlaybackSync: Equatable, Sendable {
         }
 
         if !isPlaying,
-           !targetIsStart,
            currentTime.isFinite,
-           abs(currentTime - playhead) > seekTolerance {
+           abs(currentTime - playhead) > pausedSeekThreshold(frameDuration: frameDuration, seekTolerance: seekTolerance) {
             return Command(
                 transport: .pause,
-                seek: Seek(time: playhead, precision: .exactFrame),
+                seek: Seek(
+                    time: playhead,
+                    precision: targetIsStart ? .startOfClip : .exactFrame
+                ),
                 markStartAligned: true
             )
         }

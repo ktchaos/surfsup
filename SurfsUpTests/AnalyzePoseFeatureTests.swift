@@ -134,12 +134,124 @@ struct AnalyzePoseFeatureTests {
         #expect(store.state.session.evidenceMissing == false)
     }
 
-    private func sampleClip() -> SelectedClip {
+    @Test func stepForwardMovesOneFrame() async {
+        let store = TestStore(initialState: reviewState(playhead: 1)) {
+            AnalyzePoseFeature()
+        } withDependencies: {
+            $0.date = .constant(now)
+        }
+
+        await store.send(.stepForwardTapped) {
+            $0.playhead = 1 + 1.0 / 30
+        }
+    }
+
+    @Test func stepBackwardWhilePlayingPausesAndMovesInOneSend() async {
+        let store = TestStore(initialState: reviewState(playhead: 1, isPlaying: true)) {
+            AnalyzePoseFeature()
+        } withDependencies: {
+            $0.date = .constant(now)
+        }
+
+        await store.send(.stepBackwardTapped) {
+            $0.isPlaying = false
+            $0.playhead = 1 - 1.0 / 30
+        }
+    }
+
+    @Test func stepsOutsideReviewDoNothing() async {
+        var ready = AnalyzePoseFeature.State()
+        ready.session.clip = sampleClip()
+        let store = TestStore(initialState: ready) {
+            AnalyzePoseFeature()
+        } withDependencies: {
+            $0.date = .constant(now)
+        }
+
+        await store.send(.stepForwardTapped)
+        await store.send(.stepBackwardTapped)
+    }
+
+    @Test func stepsDoNothingWhenTheClipHasNoFrameRate() async {
+        let store = TestStore(initialState: reviewState(nominalFrameRate: 0)) {
+            AnalyzePoseFeature()
+        } withDependencies: {
+            $0.date = .constant(now)
+        }
+
+        await store.send(.stepForwardTapped)
+        await store.send(.stepBackwardTapped)
+    }
+
+    @Test func steppingBackwardAtTheStartDoesNothing() async {
+        let store = TestStore(initialState: reviewState(playhead: 0)) {
+            AnalyzePoseFeature()
+        } withDependencies: {
+            $0.date = .constant(now)
+        }
+
+        await store.send(.stepBackwardTapped)
+    }
+
+    @Test func steppingForwardAtTheEndDoesNothing() async {
+        let clip = sampleClip()
+        let store = TestStore(initialState: reviewState(playhead: clip.duration)) {
+            AnalyzePoseFeature()
+        } withDependencies: {
+            $0.date = .constant(now)
+        }
+
+        await store.send(.stepForwardTapped)
+    }
+
+    @Test func aStepThatWouldPassTheEndLandsOnTheEnd() async {
+        let clip = sampleClip()
+        let store = TestStore(initialState: reviewState(playhead: clip.duration - 1.0 / 60)) {
+            AnalyzePoseFeature()
+        } withDependencies: {
+            $0.date = .constant(now)
+        }
+
+        await store.send(.stepForwardTapped) {
+            $0.playhead = clip.duration
+        }
+    }
+
+    @Test func aStepIntoAGapLeavesTheTimelineUnchanged() async {
+        let timeline = sampleTimeline(duration: 2)
+        let store = TestStore(initialState: reviewState(playhead: 1 - 1.0 / 60)) {
+            AnalyzePoseFeature()
+        } withDependencies: {
+            $0.date = .constant(now)
+        }
+
+        await store.send(.stepForwardTapped) {
+            $0.playhead = 1 - 1.0 / 60 + 1.0 / 30
+        }
+        #expect(store.state.session.run?.timeline == timeline)
+    }
+
+    private func reviewState(
+        playhead: TimeInterval = 0,
+        isPlaying: Bool = false,
+        nominalFrameRate: Float = 30
+    ) -> AnalyzePoseFeature.State {
+        let clip = sampleClip(nominalFrameRate: nominalFrameRate)
+        let timeline = sampleTimeline(duration: clip.duration)
+        var state = AnalyzePoseFeature.State()
+        state.session.clip = clip
+        state.session.run = finished(clip: clip, timeline: timeline)
+        state.playhead = playhead
+        state.isPlaying = isPlaying
+        return state
+    }
+
+    private func sampleClip(nominalFrameRate: Float = 30) -> SelectedClip {
         SelectedClip(
             id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
             url: URL(fileURLWithPath: "/tmp/clip.mov"),
             duration: 2,
-            nominalFrameRate: 30,
+            nominalFrameRate: nominalFrameRate,
             displaySize: CGSize(width: 1920, height: 1080),
             displayTransform: .identity
         )!
