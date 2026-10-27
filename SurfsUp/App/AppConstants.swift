@@ -14,6 +14,7 @@ nonisolated enum AppConstants {
 enum Typography {
     static let title = Font.title2
     static let body = Font.body
+    static let caption = Font.caption
 }
 
 enum AppColors {

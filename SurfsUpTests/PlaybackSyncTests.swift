@@ -15,7 +15,8 @@ struct PlaybackSyncTests {
             playhead: 0,
             currentTime: 4,
             hasAlignedStart: false,
-            seekTolerance: tolerance
+            seekTolerance: tolerance,
+            frameDuration: nil
         )
         #expect(command == .wait)
     }
@@ -27,7 +28,8 @@ struct PlaybackSyncTests {
             playhead: 0,
             currentTime: 3.57,
             hasAlignedStart: false,
-            seekTolerance: tolerance
+            seekTolerance: tolerance,
+            frameDuration: nil
         )
         let playing = PlaybackSync.command(
             itemReady: true,
@@ -35,7 +37,8 @@ struct PlaybackSyncTests {
             playhead: 0,
             currentTime: 3.57,
             hasAlignedStart: false,
-            seekTolerance: tolerance
+            seekTolerance: tolerance,
+            frameDuration: nil
         )
         let expected = PlaybackSync.Command(
             transport: .pause,
@@ -56,7 +59,8 @@ struct PlaybackSyncTests {
             playhead: 0,
             currentTime: 0.01,
             hasAlignedStart: false,
-            seekTolerance: tolerance
+            seekTolerance: tolerance,
+            frameDuration: nil
         )
         #expect(command.seek == nil)
         #expect(command.transport == .play)
@@ -70,7 +74,8 @@ struct PlaybackSyncTests {
             playhead: 1.5,
             currentTime: 0,
             hasAlignedStart: true,
-            seekTolerance: tolerance
+            seekTolerance: tolerance,
+            frameDuration: nil
         )
         #expect(
             command == PlaybackSync.Command(
@@ -91,7 +96,8 @@ struct PlaybackSyncTests {
             playhead: 1.5,
             currentTime: 0,
             hasAlignedStart: true,
-            seekTolerance: tolerance
+            seekTolerance: tolerance,
+            frameDuration: nil
         )
         #expect(command.seek == nil)
         #expect(command.transport == .play)
@@ -104,9 +110,108 @@ struct PlaybackSyncTests {
             playhead: 0,
             currentTime: 3.57,
             hasAlignedStart: true,
-            seekTolerance: tolerance
+            seekTolerance: tolerance,
+            frameDuration: 1.0 / 30
+        )
+        #expect(
+            command == PlaybackSync.Command(
+                transport: .pause,
+                seek: PlaybackSync.Seek(time: 0, precision: .startOfClip),
+                markStartAligned: true
+            )
+        )
+    }
+
+    @Test func pausedSeekThresholdIsHalfAFrameOrTheStartTolerance() {
+        #expect(PlaybackSync.pausedSeekThreshold(frameDuration: 1.0 / 30, seekTolerance: tolerance) == 1.0 / 60)
+        #expect(PlaybackSync.pausedSeekThreshold(frameDuration: nil, seekTolerance: tolerance) == tolerance)
+    }
+
+    @Test func aPausedStepOfOneFrameSeeksExactly() {
+        let frame = 1.0 / 30
+        let command = PlaybackSync.command(
+            itemReady: true,
+            isPlaying: false,
+            playhead: 1.5,
+            currentTime: 1.5 - frame,
+            hasAlignedStart: true,
+            seekTolerance: tolerance,
+            frameDuration: frame
+        )
+        #expect(
+            command == PlaybackSync.Command(
+                transport: .pause,
+                seek: PlaybackSync.Seek(time: 1.5, precision: .exactFrame),
+                markStartAligned: true
+            )
+        )
+    }
+
+    @Test func aPausedDriftOfAQuarterFrameDoesNotSeek() {
+        let frame = 1.0 / 30
+        let command = PlaybackSync.command(
+            itemReady: true,
+            isPlaying: false,
+            playhead: 1.5,
+            currentTime: 1.5 + frame / 4,
+            hasAlignedStart: true,
+            seekTolerance: tolerance,
+            frameDuration: frame
         )
         #expect(command.seek == nil)
         #expect(command.transport == .pause)
+    }
+
+    @Test func steppingOffTheFirstFrameSeeksInexactlyToThatFrame() {
+        let command = PlaybackSync.command(
+            itemReady: true,
+            isPlaying: false,
+            playhead: 1.0 / 30,
+            currentTime: 0,
+            hasAlignedStart: true,
+            seekTolerance: tolerance,
+            frameDuration: 1.0 / 30
+        )
+        #expect(
+            command == PlaybackSync.Command(
+                transport: .pause,
+                seek: PlaybackSync.Seek(time: 1.0 / 30, precision: .startOfClip),
+                markStartAligned: true
+            )
+        )
+    }
+
+    @Test func steppingBackToZeroSeeksInexactlyToZero() {
+        let command = PlaybackSync.command(
+            itemReady: true,
+            isPlaying: false,
+            playhead: 0,
+            currentTime: 1.0 / 30,
+            hasAlignedStart: true,
+            seekTolerance: tolerance,
+            frameDuration: 1.0 / 30
+        )
+        #expect(
+            command == PlaybackSync.Command(
+                transport: .pause,
+                seek: PlaybackSync.Seek(time: 0, precision: .startOfClip),
+                markStartAligned: true
+            )
+        )
+    }
+
+    @Test func playingOneFrameApartDoesNotSeek() {
+        let frame = 1.0 / 30
+        let command = PlaybackSync.command(
+            itemReady: true,
+            isPlaying: true,
+            playhead: 1.5,
+            currentTime: 1.5 - frame,
+            hasAlignedStart: true,
+            seekTolerance: tolerance,
+            frameDuration: frame
+        )
+        #expect(command.seek == nil)
+        #expect(command.transport == .play)
     }
 }

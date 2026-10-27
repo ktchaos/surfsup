@@ -12,6 +12,9 @@ struct AnalyzePoseFeature {
         var playhead: TimeInterval = 0
         var isPickerPresented = false
         var notice: String?
+        var savedRuns: [SavedRunSummary] = []
+        var pendingDeletionID: UUID? = nil
+        var openedSavedRunID: UUID? = nil
 
         enum Access: Equatable {
             case unknown
@@ -62,20 +65,48 @@ struct AnalyzePoseFeature {
         case startTapped
         case cancelTapped
         case progressUpdated(framesCompleted: Int, framesTotal: Int?)
-        case analysisFinished(PoseTimeline, evidenceMissing: Bool)
+        case analysisFinished(PoseTimeline, evidenceMissing: Bool, savedRunID: UUID?)
         case analysisFailed(String)
         case playTapped
         case pauseTapped
         case playheadMoved(TimeInterval)
+        case stepBackwardTapped
+        case stepForwardTapped
+        case appeared
+        case savedRunsLoaded([SavedRunSummary])
+        case reopenTapped(UUID)
+        case reopenSucceeded(UUID, SelectedClip, PoseTimeline)
+        case reopenFailed
+        case deleteTapped(UUID)
+        case deleteDeclined
+        case deleteConfirmed
+        case deleteResolved(id: UUID, removed: Bool, runs: [SavedRunSummary])
         case delegate(Delegate)
     }
 
     @Dependency(\.poseAnalysisClient) var poseAnalysisClient
     @Dependency(\.photoLibraryClient) var photoLibraryClient
+    @Dependency(\.persistenceClient) var persistenceClient
     @Dependency(\.date) var date
 
     private nonisolated enum CancelID: Hashable, Sendable {
         case analysis
+    }
+
+    /// Pauses, then moves the existing playhead by one frame. No new state.
+    private static func step(_ direction: FrameStep.Direction, state: inout State) -> Effect<Action> {
+        guard state.session.kind == .review,
+              let clip = state.session.clip,
+              let frame = FrameStep.duration(nominalFrameRate: clip.nominalFrameRate)
+        else { return .none }
+        state.isPlaying = false
+        state.playhead = FrameStep.target(
+            from: state.playhead,
+            direction: direction,
+            frameDuration: frame,
+            clipDuration: clip.duration
+        )
+        return .none
     }
 
     // MARK: - Reducer
@@ -127,6 +158,7 @@ struct AnalyzePoseFeature {
                 state.playhead = 0
                 state.notice = nil
                 state.isPickerPresented = false
+                state.openedSavedRunID = nil
                 return .cancel(id: CancelID.analysis)
 
             case .startTapped:
@@ -151,8 +183,12 @@ struct AnalyzePoseFeature {
                             switch update {
                             case let .progress(framesCompleted, framesTotal):
                                 await send(.progressUpdated(framesCompleted: framesCompleted, framesTotal: framesTotal))
-                            case let .finished(timeline, evidenceMissing):
-                                await send(.analysisFinished(timeline, evidenceMissing: evidenceMissing))
+                            case let .finished(timeline, evidenceMissing, savedRunID):
+                                await send(.analysisFinished(
+                                    timeline,
+                                    evidenceMissing: evidenceMissing,
+                                    savedRunID: savedRunID
+                                ))
                             }
                         }
                     } catch is CancellationError {
@@ -177,7 +213,7 @@ struct AnalyzePoseFeature {
                 )
                 return .none
 
-            case let .analysisFinished(timeline, evidenceMissing):
+            case let .analysisFinished(timeline, evidenceMissing, savedRunID):
                 guard let run = state.session.run, run.phase == .running else { return .none }
                 state.session.run = AnalysisRun(
                     clip: run.clip,
@@ -192,7 +228,11 @@ struct AnalyzePoseFeature {
                 state.session.evidenceMissing = evidenceMissing
                 state.isPlaying = false
                 state.playhead = 0
-                return .none
+                state.openedSavedRunID = savedRunID
+                return .run { [persistenceClient] send in
+                    let runs = await persistenceClient.list()
+                    await send(.savedRunsLoaded(runs))
+                }
 
             case let .analysisFailed(message):
                 guard let run = state.session.run, run.phase == .running else {
@@ -212,6 +252,7 @@ struct AnalyzePoseFeature {
                 )
                 state.session.evidenceMissing = false
                 state.isPlaying = false
+                state.openedSavedRunID = nil
                 return .none
 
             case .cancelTapped:
@@ -228,6 +269,7 @@ struct AnalyzePoseFeature {
                 )
                 state.session.evidenceMissing = false
                 state.isPlaying = false
+                state.openedSavedRunID = nil
                 return .cancel(id: CancelID.analysis)
 
             case .playTapped:
@@ -244,6 +286,93 @@ struct AnalyzePoseFeature {
                 guard state.session.kind == .review, let duration = state.session.clip?.duration else { return .none }
                 let upper = max(duration, 0)
                 state.playhead = min(max(0, time), upper)
+                return .none
+
+            case .stepBackwardTapped:
+                return Self.step(.backward, state: &state)
+
+            case .stepForwardTapped:
+                return Self.step(.forward, state: &state)
+
+            case .appeared:
+                return .run { [persistenceClient] send in
+                    let runs = await persistenceClient.list()
+                    await send(.savedRunsLoaded(runs))
+                }
+
+            case let .savedRunsLoaded(runs):
+                state.savedRuns = runs
+                return .none
+
+            case let .reopenTapped(id):
+                guard state.session.kind != .running else { return .none }
+                return .run { [persistenceClient] send in
+                    switch await persistenceClient.open(id) {
+                    case let .success(opened):
+                        await send(.reopenSucceeded(id, opened.0, opened.1))
+                    case .failure:
+                        await send(.reopenFailed)
+                    }
+                }
+
+            case let .reopenSucceeded(id, clip, timeline):
+                guard state.session.kind != .running else { return .none }
+                guard let run = AnalysisRun(
+                    clip: clip,
+                    phase: .finished,
+                    framesCompleted: timeline.observations.count,
+                    framesTotal: timeline.observations.count,
+                    startedAt: date.now,
+                    finishedAt: date.now,
+                    timeline: timeline,
+                    failure: nil
+                ) else { return .none }
+                state.session.clip = clip
+                state.session.run = run
+                state.session.evidenceMissing = false
+                state.isPlaying = false
+                state.playhead = 0
+                state.notice = nil
+                state.openedSavedRunID = id
+                return .none
+
+            case .reopenFailed:
+                guard state.session.kind != .running else { return .none }
+                state.notice = "videoUnavailable"
+                return .none
+
+            case let .deleteTapped(id):
+                guard state.session.kind != .running else { return .none }
+                state.pendingDeletionID = id
+                return .none
+
+            case .deleteDeclined:
+                guard state.session.kind != .running else { return .none }
+                state.pendingDeletionID = nil
+                return .none
+
+            case .deleteConfirmed:
+                guard let id = state.pendingDeletionID, state.session.kind != .running else { return .none }
+                return .run { [persistenceClient] send in
+                    let removed = await persistenceClient.remove(id)
+                    let runs = await persistenceClient.list()
+                    await send(.deleteResolved(id: id, removed: removed, runs: runs))
+                }
+
+            case let .deleteResolved(id, removed, runs):
+                state.savedRuns = runs
+                state.pendingDeletionID = nil
+                if removed, state.openedSavedRunID == id {
+                    state.session.clip = nil
+                    state.session.run = nil
+                    state.session.evidenceMissing = false
+                    state.isPlaying = false
+                    state.playhead = 0
+                    state.notice = nil
+                    state.openedSavedRunID = nil
+                } else if !removed {
+                    state.notice = "deleteFailed"
+                }
                 return .none
 
             case .delegate:
