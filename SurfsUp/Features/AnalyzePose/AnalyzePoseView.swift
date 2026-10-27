@@ -7,6 +7,8 @@ import UniformTypeIdentifiers
 struct AnalyzePoseView: View {
     @Bindable var store: StoreOf<AnalyzePoseFeature>
     @State private var pickerItem: PhotosPickerItem?
+    @State private var pendingScheduledSource: BoardAxisScheduledSource?
+    @State private var isOriginalImporterPresented = false
 
     var body: some View {
         VStack(spacing: AppConstants.UI.spacing) {
@@ -37,6 +39,31 @@ struct AnalyzePoseView: View {
         .onChange(of: store.session.clip?.id) { _, _ in
             pickerItem = nil
         }
+        .fileImporter(
+            isPresented: $isOriginalImporterPresented,
+            allowedContentTypes: [.movie],
+            onCompletion: importOriginal
+        )
+        .onAppear { store.send(.appeared) }
+        .confirmationDialog(
+            Text("deleteReviewMessage"),
+            isPresented: Binding(
+                get: { store.pendingDeletionID != nil },
+                set: { isPresented in
+                    if !isPresented, store.pendingDeletionID != nil {
+                        store.send(.deleteDeclined)
+                    }
+                }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("deleteReviewConfirm", role: .destructive) {
+                store.send(.deleteConfirmed)
+            }
+            Button("cancel", role: .cancel) {
+                store.send(.deleteDeclined)
+            }
+        }
     }
 
     @ViewBuilder
@@ -48,11 +75,16 @@ struct AnalyzePoseView: View {
                 .multilineTextAlignment(.center)
             settingsButton
             chooseButton
+            importOriginalMenu
         case .empty:
             chooseButton
+            importOriginalMenu
+            savedReviewsSection
         case .ready:
             chooseButton
+            importOriginalMenu
             startButton
+            savedReviewsSection
         case .running:
             Text("analyzing")
                 .font(Typography.title)
@@ -82,6 +114,7 @@ struct AnalyzePoseView: View {
                     onPlayhead: { store.send(.playheadMoved($0)) }
                 )
                 .clipShape(RoundedRectangle(cornerRadius: AppConstants.UI.cornerRadius))
+                TorsoLeanReadoutView(timeline: timeline, playhead: store.playhead)
                 playbackControls(duration: clip.duration)
                 if store.session.evidenceMissing {
                     Text("evidenceNotSaved")
@@ -90,11 +123,87 @@ struct AnalyzePoseView: View {
                 }
             }
             chooseButton
+            importOriginalMenu
+            savedReviewsSection
         case .failed:
             Text(LocalizedStringKey(store.session.run?.failure ?? "analysisFailed"))
                 .font(Typography.body)
                 .multilineTextAlignment(.center)
             chooseButton
+            importOriginalMenu
+            savedReviewsSection
+        }
+    }
+
+    @ViewBuilder
+    private var savedReviewsSection: some View {
+        if !store.savedRuns.isEmpty {
+            Text("savedReviews")
+                .font(Typography.body)
+            ForEach(store.savedRuns) { summary in
+                HStack(spacing: AppConstants.UI.spacing) {
+                    Button {
+                        store.send(.reopenTapped(summary.id))
+                    } label: {
+                        VStack(alignment: .leading, spacing: AppConstants.UI.spacing) {
+                            Text(verbatim: summary.displayName)
+                            Text(summary.finishedAt, format: Date.FormatStyle(date: .abbreviated, time: .shortened))
+                        }
+                    }
+                    .frame(minHeight: AppConstants.UI.controlHeight, alignment: .leading)
+                    Button {
+                        store.send(.deleteTapped(summary.id))
+                    } label: {
+                        Label("deleteReview", systemImage: "trash")
+                    }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.bordered)
+                    .frame(minHeight: AppConstants.UI.controlHeight)
+                }
+            }
+        }
+    }
+
+    private var importOriginalMenu: some View {
+        Menu {
+            ForEach(BoardAxisScheduledSource.boardAxisClips) { source in
+                Button(source.sourceFilename) {
+                    pendingScheduledSource = source
+                    isOriginalImporterPresented = true
+                }
+            }
+        } label: {
+            Text("importOriginalVideo")
+        }
+        .buttonStyle(.bordered)
+        .frame(minHeight: AppConstants.UI.controlHeight)
+    }
+
+    private func importOriginal(_ result: Result<URL, Error>) {
+        guard let expected = pendingScheduledSource else {
+            store.send(.analysisFailed("analysisFailed"))
+            return
+        }
+        switch result {
+        case .failure(let error):
+            let nsError = error as NSError
+            if nsError.domain == NSCocoaErrorDomain && nsError.code == NSUserCancelledError {
+                return
+            }
+            store.send(.analysisFailed("analysisFailed"))
+        case .success(let url):
+            let accessing = url.startAccessingSecurityScopedResource()
+            defer {
+                if accessing { url.stopAccessingSecurityScopedResource() }
+            }
+            do {
+                let loadClipURL = try BoardAxisSourceIdentity.fileForLoadClip(importedFrom: url, expected: expected)
+                store.send(.videoURLPicked(loadClipURL))
+            } catch BoardAxisSourceIdentityError.mismatch {
+                store.send(.analysisFailed("sourceFileMismatch"))
+            } catch {
+                store.send(.analysisFailed("analysisFailed"))
+            }
         }
     }
 
@@ -122,13 +231,27 @@ struct AnalyzePoseView: View {
     }
 
     private func playbackControls(duration: TimeInterval) -> some View {
-        VStack(spacing: AppConstants.UI.spacing) {
+        let canStep = store.session.clip
+            .map { FrameStep.duration(nominalFrameRate: $0.nominalFrameRate) != nil } ?? false
+        return VStack(spacing: AppConstants.UI.spacing) {
             HStack(spacing: AppConstants.UI.spacing) {
+                Button { store.send(.stepBackwardTapped) } label: {
+                    Label("stepBackward", systemImage: "backward.frame")
+                }
+                .labelStyle(.iconOnly)
+                .buttonStyle(.bordered)
+                .disabled(!canStep)
                 Button("play") { store.send(.playTapped) }
                     .buttonStyle(.borderedProminent)
                     .tint(AppColors.accent)
                 Button("pause") { store.send(.pauseTapped) }
                     .buttonStyle(.bordered)
+                Button { store.send(.stepForwardTapped) } label: {
+                    Label("stepForward", systemImage: "forward.frame")
+                }
+                .labelStyle(.iconOnly)
+                .buttonStyle(.bordered)
+                .disabled(!canStep)
             }
             .frame(minHeight: AppConstants.UI.controlHeight)
             Slider(
@@ -163,9 +286,11 @@ struct PickedVideo: Transferable {
             SentTransferredFile(video.url)
         } importing: { received in
             let ext = received.file.pathExtension.isEmpty ? "mov" : received.file.pathExtension
-            let destination = FileManager.default.temporaryDirectory
-                .appendingPathComponent(UUID().uuidString)
-                .appendingPathExtension(ext)
+            let name = received.file.lastPathComponent.isEmpty ? "video.\(ext)" : received.file.lastPathComponent
+            let folder = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString, isDirectory: true)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let destination = folder.appendingPathComponent(name)
             try FileManager.default.copyItem(at: received.file, to: destination)
             return PickedVideo(url: destination)
         }

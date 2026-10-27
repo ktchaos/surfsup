@@ -6,6 +6,10 @@ nonisolated enum UIConstants {
         static let cancelBound: TimeInterval = 1
         static let playheadInterval: TimeInterval = 1.0 / 30.0
         static let seekTolerance: TimeInterval = 0.05
+        /// Gap between the torso-lean value row and its caption, and between the value and the side word.
+        static let readoutSpacing: CGFloat = 4
+        /// The torso-lean caption is secondary to the value; it is never hidden.
+        static let readoutCaptionOpacity: Double = 0.7
     }
 }
 

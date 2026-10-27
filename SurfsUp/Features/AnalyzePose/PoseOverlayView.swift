@@ -17,6 +17,7 @@ struct PoseOverlayView: View {
                     url: clip.url,
                     isPlaying: isPlaying,
                     playhead: playhead,
+                    frameDuration: FrameStep.duration(nominalFrameRate: clip.nominalFrameRate),
                     onPlayhead: onPlayhead
                 )
                 PlaybackTimeLabel(time: playhead)
@@ -97,11 +98,11 @@ private func drawTorsoSegment(
     }
     if let neck {
         strokeMarker(context: &context, at: neck, color: torsoNeckColor, shape: .circle)
-        drawMarkerLabel("NECK", at: neck, above: true, color: torsoNeckColor, in: rect, context: &context)
+        drawMarkerLabel(Text("overlayNeck"), at: neck, above: true, color: torsoNeckColor, in: rect, context: &context)
     }
     if let root {
         strokeMarker(context: &context, at: root, color: torsoRootColor, shape: .square)
-        drawMarkerLabel("ROOT / HIP CENTER", at: root, above: false, color: torsoRootColor, in: rect, context: &context)
+        drawMarkerLabel(Text("overlayRoot"), at: root, above: false, color: torsoRootColor, in: rect, context: &context)
     }
 }
 
@@ -123,7 +124,7 @@ private func strokeMarker(
 }
 
 private func drawMarkerLabel(
-    _ title: String,
+    _ title: Text,
     at marker: CGPoint,
     above: Bool,
     color: Color,
@@ -131,7 +132,7 @@ private func drawMarkerLabel(
     context: inout GraphicsContext
 ) {
     let resolved = context.resolve(
-        Text(title)
+        title
             .font(.system(size: 9, weight: .bold))
             .foregroundStyle(color)
     )
@@ -175,6 +176,7 @@ struct VideoPlaybackView: UIViewRepresentable {
     let url: URL
     let isPlaying: Bool
     let playhead: TimeInterval
+    let frameDuration: TimeInterval?
     let onPlayhead: (TimeInterval) -> Void
 
     func makeCoordinator() -> Coordinator {
@@ -192,6 +194,7 @@ struct VideoPlaybackView: UIViewRepresentable {
         coordinator.url = url
         coordinator.desiredPlaying = isPlaying
         coordinator.desiredPlayhead = playhead
+        coordinator.frameDuration = frameDuration
         coordinator.observeStatus(of: item)
         let interval = CMTime(seconds: UIConstants.AnalyzePose.playheadInterval, preferredTimescale: 600)
         coordinator.token = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { time in
@@ -206,6 +209,7 @@ struct VideoPlaybackView: UIViewRepresentable {
         coordinator.onPlayhead = onPlayhead
         coordinator.desiredPlaying = isPlaying
         coordinator.desiredPlayhead = playhead
+        coordinator.frameDuration = frameDuration
         guard let player = view.playerLayer.player else { return }
         if player.currentItem == nil || coordinator.url != url {
             let item = AVPlayerItem(url: url)
@@ -233,6 +237,7 @@ struct VideoPlaybackView: UIViewRepresentable {
         var onPlayhead: (TimeInterval) -> Void
         var desiredPlaying = false
         var desiredPlayhead: TimeInterval = 0
+        var frameDuration: TimeInterval?
         var hasAlignedStart = false
         var seekInFlight = false
         var pendingSeek: PlaybackSync.Seek?
@@ -267,7 +272,8 @@ struct VideoPlaybackView: UIViewRepresentable {
                 playhead: desiredPlayhead,
                 currentTime: player.currentTime().seconds,
                 hasAlignedStart: hasAlignedStart,
-                seekTolerance: UIConstants.AnalyzePose.seekTolerance
+                seekTolerance: UIConstants.AnalyzePose.seekTolerance,
+                frameDuration: frameDuration
             )
             if command.markStartAligned {
                 hasAlignedStart = true

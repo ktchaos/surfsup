@@ -5,7 +5,7 @@ import Vision
 
 nonisolated enum AnalysisUpdate: Equatable, Sendable {
     case progress(framesCompleted: Int, framesTotal: Int?)
-    case finished(PoseTimeline, evidenceMissing: Bool)
+    case finished(PoseTimeline, evidenceMissing: Bool, savedRunID: UUID?)
 }
 
 nonisolated enum PoseAnalysisError: Error, Equatable {
@@ -115,20 +115,14 @@ nonisolated enum PoseAnalysisLive {
             throw PoseAnalysisError.invalidTimeline
         }
 
-        var evidenceMissing = false
-        do {
-            let url = try EvidenceFileWriter.write(record, to: EvidenceFileWriter.storageDirectory())
-            if Task.isCancelled {
-                try? FileManager.default.removeItem(at: url)
-                throw CancellationError()
-            }
-        } catch is CancellationError {
+        let written = await PersistenceClient.live.writeFinished(clip, record)
+        if Task.isCancelled, let id = written.id {
+            SavedRunStore.remove(id: id, in: EvidenceFileWriter.storageDirectory())
             throw CancellationError()
-        } catch {
-            evidenceMissing = true
         }
+        let evidenceMissing = written.evidenceMissing
 
-        continuation.yield(.finished(timeline, evidenceMissing: evidenceMissing))
+        continuation.yield(.finished(timeline, evidenceMissing: evidenceMissing, savedRunID: written.id))
         continuation.finish()
     }
 
