@@ -50,6 +50,7 @@ struct AnalyzePoseFeatureTests {
             $0.session.run = self.finished(clip: clip, timeline: timeline)
             $0.session.evidenceMissing = false
         }
+        await store.receive(.savedRunsLoaded([]))
         #expect(store.state.screen == .review)
         let playhead = TimeInterval(1)
         await store.send(.playTapped) {
@@ -229,6 +230,208 @@ struct AnalyzePoseFeatureTests {
             $0.playhead = 1 - 1.0 / 60 + 1.0 / 30
         }
         #expect(store.state.session.run?.timeline == timeline)
+    }
+
+    @Test func appearedLoadsSavedRunsAndDoesNotOpenAReview() async {
+        let summary = SavedRunSummary(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000010")!,
+            displayName: "wave.mov",
+            finishedAt: now,
+            clipDuration: 2
+        )
+        let store = TestStore(initialState: AnalyzePoseFeature.State()) {
+            AnalyzePoseFeature()
+        } withDependencies: {
+            $0.date = .constant(now)
+            $0.persistenceClient.list = { [summary] }
+            $0.poseAnalysisClient.analyze = { _, _ in
+                Issue.record("poseAnalysisClient.analyze was called")
+                return AsyncThrowingStream { continuation in
+                    continuation.finish(throwing: PoseAnalysisError.unimplemented)
+                }
+            }
+        }
+
+        await store.send(.appeared)
+        await store.receive(.savedRunsLoaded([summary])) {
+            $0.savedRuns = [summary]
+        }
+        #expect(store.state.screen != .review)
+    }
+
+    @Test func reopenTappedReachesReviewWithoutDetection() async {
+        let clip = sampleClip()
+        let timeline = sampleTimeline(duration: clip.duration)
+        let store = TestStore(initialState: AnalyzePoseFeature.State()) {
+            AnalyzePoseFeature()
+        } withDependencies: {
+            $0.date = .constant(now)
+            $0.persistenceClient.open = { _ in .success((clip, timeline)) }
+            $0.poseAnalysisClient.analyze = { _, _ in
+                Issue.record("poseAnalysisClient.analyze was called")
+                return AsyncThrowingStream { continuation in
+                    continuation.finish(throwing: PoseAnalysisError.unimplemented)
+                }
+            }
+        }
+
+        await store.send(.reopenTapped(UUID(uuidString: "00000000-0000-0000-0000-000000000011")!))
+        await store.receive(.reopenSucceeded(clip, timeline)) {
+            $0.session.clip = clip
+            $0.session.run = self.finished(clip: clip, timeline: timeline)
+            $0.session.evidenceMissing = false
+            $0.isPlaying = false
+            $0.playhead = 0
+            $0.notice = nil
+        }
+        #expect(store.state.screen == .review)
+        #expect(store.state.session.evidenceMissing == false)
+        #expect(store.state.isPlaying == false)
+        #expect(store.state.playhead == 0)
+    }
+
+    @Test func twoSavedRunsWithTheSameDurationOpenDifferentVideos() async {
+        let first = sampleClip()
+        let second = SelectedClip(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000002")!,
+            url: URL(fileURLWithPath: "/tmp/other-clip.mov"),
+            duration: first.duration,
+            nominalFrameRate: 30,
+            displaySize: first.displaySize,
+            displayTransform: .identity
+        )!
+        let timeline = sampleTimeline(duration: first.duration)
+        let firstID = UUID(uuidString: "00000000-0000-0000-0000-000000000021")!
+        let secondID = UUID(uuidString: "00000000-0000-0000-0000-000000000022")!
+        #expect(first.duration == second.duration)
+        #expect(first.url != second.url)
+        let store = TestStore(initialState: AnalyzePoseFeature.State()) {
+            AnalyzePoseFeature()
+        } withDependencies: {
+            $0.date = .constant(now)
+            $0.persistenceClient.open = { id in
+                id == firstID ? .success((first, timeline)) : .success((second, timeline))
+            }
+            $0.poseAnalysisClient.analyze = { _, _ in
+                Issue.record("poseAnalysisClient.analyze was called")
+                return AsyncThrowingStream { continuation in
+                    continuation.finish(throwing: PoseAnalysisError.unimplemented)
+                }
+            }
+        }
+
+        await store.send(.reopenTapped(firstID))
+        await store.receive(.reopenSucceeded(first, timeline)) {
+            $0.session.clip = first
+            $0.session.run = self.finished(clip: first, timeline: timeline)
+            $0.session.evidenceMissing = false
+            $0.isPlaying = false
+            $0.playhead = 0
+            $0.notice = nil
+        }
+        await store.send(.reopenTapped(secondID))
+        await store.receive(.reopenSucceeded(second, timeline)) {
+            $0.session.clip = second
+            $0.session.run = self.finished(clip: second, timeline: timeline)
+            $0.session.evidenceMissing = false
+            $0.isPlaying = false
+            $0.playhead = 0
+            $0.notice = nil
+        }
+        #expect(store.state.session.clip?.url == second.url)
+    }
+
+    @Test func reopenFailedExplainsWithoutEnteringReview() async {
+        let store = TestStore(initialState: AnalyzePoseFeature.State()) {
+            AnalyzePoseFeature()
+        } withDependencies: {
+            $0.date = .constant(now)
+            $0.persistenceClient.open = { _ in .failure(.videoUnavailable) }
+        }
+
+        await store.send(.reopenTapped(UUID(uuidString: "00000000-0000-0000-0000-000000000023")!))
+        await store.receive(.reopenFailed) {
+            $0.notice = "videoUnavailable"
+        }
+        #expect(store.state.screen != .review)
+    }
+
+    @Test func reopenIsIgnoredWhileAnalysisIsRunning() async {
+        let clip = sampleClip()
+        let other = SelectedClip(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000003")!,
+            url: URL(fileURLWithPath: "/tmp/running-other.mov"),
+            duration: clip.duration,
+            nominalFrameRate: 30,
+            displaySize: clip.displaySize,
+            displayTransform: .identity
+        )!
+        let timeline = sampleTimeline(duration: clip.duration)
+        var running = AnalyzePoseFeature.State()
+        running.session.clip = clip
+        running.session.run = self.running(clip: clip, framesCompleted: 1)
+        let store = TestStore(initialState: running) {
+            AnalyzePoseFeature()
+        } withDependencies: {
+            $0.date = .constant(now)
+            $0.persistenceClient.open = { _ in .success((other, timeline)) }
+        }
+
+        await store.send(.reopenTapped(UUID(uuidString: "00000000-0000-0000-0000-000000000024")!))
+        await store.send(.reopenSucceeded(other, timeline))
+        await store.send(.reopenFailed)
+        #expect(store.state.session.kind == .running)
+        #expect(store.state.session.clip == clip)
+    }
+
+    @Test func reopenSucceededReplacesTheClipAlreadyOnScreen() async {
+        let replacement = SelectedClip(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000004")!,
+            url: URL(fileURLWithPath: "/tmp/replacement.mov"),
+            duration: 2,
+            nominalFrameRate: 30,
+            displaySize: CGSize(width: 1920, height: 1080),
+            displayTransform: .identity
+        )!
+        let timeline = sampleTimeline(duration: replacement.duration)
+        let store = TestStore(initialState: reviewState()) {
+            AnalyzePoseFeature()
+        } withDependencies: {
+            $0.date = .constant(now)
+        }
+
+        await store.send(.reopenSucceeded(replacement, timeline)) {
+            $0.session.clip = replacement
+            $0.session.run = self.finished(clip: replacement, timeline: timeline)
+            $0.session.evidenceMissing = false
+            $0.isPlaying = false
+            $0.playhead = 0
+            $0.notice = nil
+        }
+        #expect(store.state.session.clip?.url == replacement.url)
+    }
+
+    @Test func savedRunsLoadedKeepsAnEarlierIdAfterSelectVideo() async {
+        let clip = sampleClip()
+        let summary = SavedRunSummary(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000025")!,
+            displayName: "earlier.mov",
+            finishedAt: now,
+            clipDuration: 2
+        )
+        var initial = AnalyzePoseFeature.State()
+        initial.savedRuns = [summary]
+        let store = TestStore(initialState: initial) {
+            AnalyzePoseFeature()
+        } withDependencies: {
+            $0.date = .constant(now)
+        }
+
+        await store.send(.selectVideo(clip)) {
+            $0.session.clip = clip
+        }
+        await store.send(.savedRunsLoaded([summary]))
+        #expect(store.state.savedRuns.map(\.id) == [summary.id])
     }
 
     private func reviewState(

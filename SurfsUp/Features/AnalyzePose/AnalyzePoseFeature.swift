@@ -12,6 +12,7 @@ struct AnalyzePoseFeature {
         var playhead: TimeInterval = 0
         var isPickerPresented = false
         var notice: String?
+        var savedRuns: [SavedRunSummary] = []
 
         enum Access: Equatable {
             case unknown
@@ -69,11 +70,17 @@ struct AnalyzePoseFeature {
         case playheadMoved(TimeInterval)
         case stepBackwardTapped
         case stepForwardTapped
+        case appeared
+        case savedRunsLoaded([SavedRunSummary])
+        case reopenTapped(UUID)
+        case reopenSucceeded(SelectedClip, PoseTimeline)
+        case reopenFailed
         case delegate(Delegate)
     }
 
     @Dependency(\.poseAnalysisClient) var poseAnalysisClient
     @Dependency(\.photoLibraryClient) var photoLibraryClient
+    @Dependency(\.persistenceClient) var persistenceClient
     @Dependency(\.date) var date
 
     private nonisolated enum CancelID: Hashable, Sendable {
@@ -210,7 +217,10 @@ struct AnalyzePoseFeature {
                 state.session.evidenceMissing = evidenceMissing
                 state.isPlaying = false
                 state.playhead = 0
-                return .none
+                return .run { [persistenceClient] send in
+                    let runs = await persistenceClient.list()
+                    await send(.savedRunsLoaded(runs))
+                }
 
             case let .analysisFailed(message):
                 guard let run = state.session.run, run.phase == .running else {
@@ -269,6 +279,52 @@ struct AnalyzePoseFeature {
 
             case .stepForwardTapped:
                 return Self.step(.forward, state: &state)
+
+            case .appeared:
+                return .run { [persistenceClient] send in
+                    let runs = await persistenceClient.list()
+                    await send(.savedRunsLoaded(runs))
+                }
+
+            case let .savedRunsLoaded(runs):
+                state.savedRuns = runs
+                return .none
+
+            case let .reopenTapped(id):
+                guard state.session.kind != .running else { return .none }
+                return .run { [persistenceClient] send in
+                    switch await persistenceClient.open(id) {
+                    case let .success(opened):
+                        await send(.reopenSucceeded(opened.0, opened.1))
+                    case .failure:
+                        await send(.reopenFailed)
+                    }
+                }
+
+            case let .reopenSucceeded(clip, timeline):
+                guard state.session.kind != .running else { return .none }
+                guard let run = AnalysisRun(
+                    clip: clip,
+                    phase: .finished,
+                    framesCompleted: timeline.observations.count,
+                    framesTotal: timeline.observations.count,
+                    startedAt: date.now,
+                    finishedAt: date.now,
+                    timeline: timeline,
+                    failure: nil
+                ) else { return .none }
+                state.session.clip = clip
+                state.session.run = run
+                state.session.evidenceMissing = false
+                state.isPlaying = false
+                state.playhead = 0
+                state.notice = nil
+                return .none
+
+            case .reopenFailed:
+                guard state.session.kind != .running else { return .none }
+                state.notice = "videoUnavailable"
+                return .none
 
             case .delegate:
                 return .none

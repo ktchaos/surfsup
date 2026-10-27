@@ -44,6 +44,7 @@ struct AnalyzePoseView: View {
             allowedContentTypes: [.movie],
             onCompletion: importOriginal
         )
+        .onAppear { store.send(.appeared) }
     }
 
     @ViewBuilder
@@ -59,10 +60,12 @@ struct AnalyzePoseView: View {
         case .empty:
             chooseButton
             importOriginalMenu
+            savedReviewsSection
         case .ready:
             chooseButton
             importOriginalMenu
             startButton
+            savedReviewsSection
         case .running:
             Text("analyzing")
                 .font(Typography.title)
@@ -102,12 +105,33 @@ struct AnalyzePoseView: View {
             }
             chooseButton
             importOriginalMenu
+            savedReviewsSection
         case .failed:
             Text(LocalizedStringKey(store.session.run?.failure ?? "analysisFailed"))
                 .font(Typography.body)
                 .multilineTextAlignment(.center)
             chooseButton
             importOriginalMenu
+            savedReviewsSection
+        }
+    }
+
+    @ViewBuilder
+    private var savedReviewsSection: some View {
+        if !store.savedRuns.isEmpty {
+            Text("savedReviews")
+                .font(Typography.body)
+            ForEach(store.savedRuns) { summary in
+                Button {
+                    store.send(.reopenTapped(summary.id))
+                } label: {
+                    VStack(alignment: .leading, spacing: AppConstants.UI.spacing) {
+                        Text(verbatim: summary.displayName)
+                        Text(summary.finishedAt, format: Date.FormatStyle(date: .abbreviated, time: .shortened))
+                    }
+                }
+                .frame(minHeight: AppConstants.UI.controlHeight, alignment: .leading)
+            }
         }
     }
 
@@ -233,9 +257,11 @@ struct PickedVideo: Transferable {
             SentTransferredFile(video.url)
         } importing: { received in
             let ext = received.file.pathExtension.isEmpty ? "mov" : received.file.pathExtension
-            let destination = FileManager.default.temporaryDirectory
-                .appendingPathComponent(UUID().uuidString)
-                .appendingPathExtension(ext)
+            let name = received.file.lastPathComponent.isEmpty ? "video.\(ext)" : received.file.lastPathComponent
+            let folder = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString, isDirectory: true)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let destination = folder.appendingPathComponent(name)
             try FileManager.default.copyItem(at: received.file, to: destination)
             return PickedVideo(url: destination)
         }

@@ -27,4 +27,18 @@ nonisolated enum EvidenceFileWriter {
         try data.write(to: url, options: .atomic)
         return url
     }
+
+    /// Encodes `record` to a caller-chosen file. The directory method `write(_:to:)` is unchanged.
+    static func write(_ record: EvidenceRecord, toFile url: URL) throws -> URL {
+        try FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        guard !FileManager.default.fileExists(atPath: url.path) else { throw EvidenceWriteError.alreadyExists }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let data = try encoder.encode(record)
+        try data.write(to: url, options: .atomic)
+        return url
+    }
 }
