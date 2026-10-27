@@ -1060,6 +1060,511 @@
           }
         }
       }
+    },
+    "torsoLeanCaption" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Billedets torsohældning for det gemte nakke–rod-segment i det oprejste billede. En billedhypotese, hvis venstre/højre-fortegn blev understøttet af den gennemførte kontrol. Ikke en 3D-kropsvinkel, ikke i forhold til surfbrættet, ikke en score."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bild-Oberkörperneigung des gespeicherten Nacken–Wurzel-Segments im aufrechten Bild. Eine Bildhypothese, deren Links/Rechts-Vorzeichen durch die abgeschlossene Prüfung gestützt wurde. Kein 3D-Körperwinkel, nicht relativ zum Surfbrett, keine Bewertung."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Picture torso lean of the stored neck–root segment in the upright picture. A picture hypothesis whose left/right sign was supported by the completed check. Not a 3D body angle, not relative to the surfboard, not a score."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inclinación del torso en la imagen del segmento cuello–raíz almacenado en la imagen vertical. Una hipótesis de imagen cuyo signo izquierda/derecha fue respaldado por la comprobación completada. No es un ángulo corporal 3D, no es relativo a la tabla de surf, no es una puntuación."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inclinaison du torse dans l’image du segment cou–racine enregistré, dans l’image redressée. Une hypothèse d’image dont le signe gauche/droite a été confirmé par la vérification terminée. Ni un angle corporel 3D, ni relatif à la planche de surf, ni un score."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inclinazione del busto nell’immagine del segmento collo–radice memorizzato nell’immagine verticale. Un’ipotesi d’immagine il cui segno sinistra/destra è stato supportato dalla verifica completata. Non è un angolo corporeo 3D, non è relativo alla tavola da surf, non è un punteggio."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正立画像における、保存された首–基部セグメントの画像上の胴体の傾き。完了した確認で左右の符号が裏付けられた画像仮説です。3D の身体角度ではなく、サーフボードに対する角度でもなく、スコアでもありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "정립 이미지에서 저장된 목–기준점 선분의 이미지상 상체 기울기입니다. 완료된 확인에서 좌/우 부호가 뒷받침된 이미지 가설입니다. 3D 신체 각도가 아니며, 서프보드 기준도 아니고, 점수도 아닙니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beeldromphelling van het opgeslagen nek–wortelsegment in het rechtopstaande beeld. Een beeldhypothese waarvan het links/rechts-teken werd ondersteund door de voltooide controle. Geen 3D-lichaamshoek, niet ten opzichte van het surfboard, geen score."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Obrazowe nachylenie tułowia zapisanego odcinka kark–podstawa w obrazie wyprostowanym. Hipoteza obrazowa, której znak lewo/prawo został potwierdzony przez ukończone sprawdzenie. Nie jest to kąt ciała 3D, nie jest względem deski surfingowej, nie jest to wynik."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inclinação do tronco na imagem do segmento pescoço–raiz armazenado na imagem vertical. Uma hipótese de imagem cujo sinal esquerda/direita foi apoiado pela verificação concluída. Não é um ângulo corporal 3D, não é relativo à prancha de surf, não é uma pontuação."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Наклон туловища на изображении для сохранённого отрезка шея–основание в выпрямленном изображении. Гипотеза по изображению, знак влево/вправо которой был подтверждён завершённой проверкой. Не угол тела в 3D, не относительно доски для сёрфинга, не оценка."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bildens bållutning för det lagrade nacke–rot-segmentet i den upprätta bilden. En bildhypotes vars vänster/höger-tecken stöddes av den slutförda kontrollen. Inte en 3D-kroppsvinkel, inte relativt surfbrädan, inte en poäng."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dik görüntüde, kaydedilen boyun–kök parçasının görüntüdeki gövde eğimi. Sol/sağ işareti tamamlanan kontrolle desteklenen bir görüntü hipotezi. 3D bir vücut açısı değil, sörf tahtasına göre değil, bir puan değil."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "直立画面中已保存的颈部–根部线段在画面中的躯干倾斜。一个画面假设，其左右符号已由完成的检查支持。不是三维身体角度，不是相对于冲浪板的角度，也不是分数。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "直立畫面中已儲存的頸部–根部線段在畫面中的軀幹傾斜。一個畫面假設，其左右符號已由完成的檢查支持。不是三維身體角度，不是相對於衝浪板的角度，也不是分數。"
+          }
+        }
+      }
+    },
+    "torsoLeanLeft" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "venstre"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "links"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "left"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "izquierda"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "gauche"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "sinistra"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "左"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "왼쪽"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "links"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "w lewo"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "esquerda"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "влево"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "vänster"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "sol"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "左"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "左"
+          }
+        }
+      }
+    },
+    "torsoLeanRight" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "højre"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "rechts"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "right"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "derecha"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "droite"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "destra"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "右"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오른쪽"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "rechts"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "w prawo"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "direita"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "вправо"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "höger"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "sağ"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "右"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "右"
+          }
+        }
+      }
+    },
+    "torsoLeanStraightDown" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "lige ned"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "senkrecht nach unten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "straight down"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "recto hacia abajo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "droit vers le bas"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "dritto verso il basso"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "真下"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "수직 아래"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "recht omlaag"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "prosto w dół"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "reto para baixo"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "прямо вниз"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "rakt nedåt"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "dümdüz aşağı"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "垂直向下"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "垂直向下"
+          }
+        }
+      }
+    },
+    "torsoLeanUpright" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "oprejst"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "aufrecht"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "upright"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "vertical"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "vertical"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "verticale"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "直立"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "직립"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "rechtop"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "pionowo"
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "vertical"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "вертикально"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "upprätt"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "dik"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "直立"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "直立"
+          }
+        }
+      }
     }
   },
   "version" : "1.1"

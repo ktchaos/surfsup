@@ -92,6 +92,7 @@ struct AnalyzePoseView: View {
                     onPlayhead: { store.send(.playheadMoved($0)) }
                 )
                 .clipShape(RoundedRectangle(cornerRadius: AppConstants.UI.cornerRadius))
+                TorsoLeanReadoutView(timeline: timeline, playhead: store.playhead)
                 playbackControls(duration: clip.duration)
                 if store.session.evidenceMissing {
                     Text("evidenceNotSaved")
