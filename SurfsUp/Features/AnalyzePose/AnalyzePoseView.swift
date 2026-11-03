@@ -7,8 +7,6 @@ import UniformTypeIdentifiers
 struct AnalyzePoseView: View {
     @Bindable var store: StoreOf<AnalyzePoseFeature>
     @State private var pickerItem: PhotosPickerItem?
-    @State private var pendingScheduledSource: BoardAxisScheduledSource?
-    @State private var isOriginalImporterPresented = false
 
     var body: some View {
         VStack(spacing: AppConstants.UI.spacing) {
@@ -39,11 +37,6 @@ struct AnalyzePoseView: View {
         .onChange(of: store.session.clip?.id) { _, _ in
             pickerItem = nil
         }
-        .fileImporter(
-            isPresented: $isOriginalImporterPresented,
-            allowedContentTypes: [.movie],
-            onCompletion: importOriginal
-        )
         .onAppear { store.send(.appeared) }
         .confirmationDialog(
             Text("deleteReviewMessage"),
@@ -75,14 +68,11 @@ struct AnalyzePoseView: View {
                 .multilineTextAlignment(.center)
             settingsButton
             chooseButton
-            importOriginalMenu
         case .empty:
             chooseButton
-            importOriginalMenu
             savedReviewsSection
         case .ready:
             chooseButton
-            importOriginalMenu
             startButton
             savedReviewsSection
         case .running:
@@ -123,14 +113,12 @@ struct AnalyzePoseView: View {
                 }
             }
             chooseButton
-            importOriginalMenu
             savedReviewsSection
         case .failed:
             Text(LocalizedStringKey(store.session.run?.failure ?? "analysisFailed"))
                 .font(Typography.body)
                 .multilineTextAlignment(.center)
             chooseButton
-            importOriginalMenu
             savedReviewsSection
         }
     }
@@ -160,49 +148,6 @@ struct AnalyzePoseView: View {
                     .buttonStyle(.bordered)
                     .frame(minHeight: AppConstants.UI.controlHeight)
                 }
-            }
-        }
-    }
-
-    private var importOriginalMenu: some View {
-        Menu {
-            ForEach(BoardAxisScheduledSource.boardAxisClips) { source in
-                Button(source.sourceFilename) {
-                    pendingScheduledSource = source
-                    isOriginalImporterPresented = true
-                }
-            }
-        } label: {
-            Text("importOriginalVideo")
-        }
-        .buttonStyle(.bordered)
-        .frame(minHeight: AppConstants.UI.controlHeight)
-    }
-
-    private func importOriginal(_ result: Result<URL, Error>) {
-        guard let expected = pendingScheduledSource else {
-            store.send(.analysisFailed("analysisFailed"))
-            return
-        }
-        switch result {
-        case .failure(let error):
-            let nsError = error as NSError
-            if nsError.domain == NSCocoaErrorDomain && nsError.code == NSUserCancelledError {
-                return
-            }
-            store.send(.analysisFailed("analysisFailed"))
-        case .success(let url):
-            let accessing = url.startAccessingSecurityScopedResource()
-            defer {
-                if accessing { url.stopAccessingSecurityScopedResource() }
-            }
-            do {
-                let loadClipURL = try BoardAxisSourceIdentity.fileForLoadClip(importedFrom: url, expected: expected)
-                store.send(.videoURLPicked(loadClipURL))
-            } catch BoardAxisSourceIdentityError.mismatch {
-                store.send(.analysisFailed("sourceFileMismatch"))
-            } catch {
-                store.send(.analysisFailed("analysisFailed"))
             }
         }
     }
