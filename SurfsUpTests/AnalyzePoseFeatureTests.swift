@@ -827,6 +827,211 @@ struct AnalyzePoseFeatureTests {
         #expect(store.state.screen == .review)
     }
 
+    @Test func closeFromReviewClearsTheSessionAndLeavesSavedRuns() async {
+        let id = UUID(uuidString: "00000000-0000-0000-0000-000000000060")!
+        let summary = SavedRunSummary(
+            id: id,
+            displayName: "saved.mov",
+            finishedAt: now,
+            clipDuration: 2
+        )
+        var initial = reviewState(playhead: 1, isPlaying: true)
+        initial.access = .granted
+        initial.isPickerPresented = true
+        initial.notice = "evidenceNotSaved"
+        initial.openedSavedRunID = id
+        initial.savedRuns = [summary]
+        let store = TestStore(initialState: initial) {
+            AnalyzePoseFeature()
+        } withDependencies: {
+            self.forbidCloseSideEffects(&$0)
+        }
+
+        await store.send(.closeTapped) {
+            $0.session.clip = nil
+            $0.session.run = nil
+            $0.isPlaying = false
+            $0.playhead = 0
+            $0.notice = nil
+            $0.openedSavedRunID = nil
+        }
+        #expect(store.state.savedRuns.map(\.id) == [id])
+        #expect(store.state.screen != .review)
+        #expect(store.state.screen == .empty)
+        #expect(store.state.access == .granted)
+        #expect(store.state.isPickerPresented)
+    }
+
+    @Test func closeFromFailedClearsTheSessionWithoutWriting() async {
+        let clip = sampleClip()
+        let id = UUID(uuidString: "00000000-0000-0000-0000-000000000061")!
+        var initial = AnalyzePoseFeature.State()
+        initial.session.clip = clip
+        initial.session.run = failed(clip: clip)
+        initial.isPlaying = true
+        initial.playhead = 0.5
+        initial.notice = "analysisFailed"
+        initial.openedSavedRunID = id
+        let store = TestStore(initialState: initial) {
+            AnalyzePoseFeature()
+        } withDependencies: {
+            self.forbidCloseSideEffects(&$0)
+        }
+
+        await store.send(.closeTapped) {
+            $0.session.clip = nil
+            $0.session.run = nil
+            $0.isPlaying = false
+            $0.playhead = 0
+            $0.notice = nil
+            $0.openedSavedRunID = nil
+        }
+        #expect(store.state.screen != .failed)
+        #expect(store.state.screen == .empty)
+    }
+
+    @Test func closeFromReadyRemovesTheClipSoStartIsUnavailable() async {
+        let clip = sampleClip()
+        var initial = AnalyzePoseFeature.State()
+        initial.session.clip = clip
+        initial.isPlaying = true
+        initial.playhead = 0.5
+        initial.notice = "analysisFailed"
+        let store = TestStore(initialState: initial) {
+            AnalyzePoseFeature()
+        } withDependencies: {
+            self.forbidCloseSideEffects(&$0)
+        }
+
+        await store.send(.closeTapped) {
+            $0.session.clip = nil
+            $0.isPlaying = false
+            $0.playhead = 0
+            $0.notice = nil
+        }
+        #expect(store.state.session.clip == nil)
+        #expect(store.state.screen != .ready)
+        await store.send(.startTapped)
+        #expect(store.state.screen == .empty)
+    }
+
+    @Test func closeWhileRunningDoesNothing() async {
+        let clip = sampleClip()
+        let id = UUID(uuidString: "00000000-0000-0000-0000-000000000062")!
+        var initial = AnalyzePoseFeature.State()
+        initial.session.clip = clip
+        initial.session.run = running(clip: clip, framesCompleted: 1)
+        initial.isPlaying = true
+        initial.playhead = 0.5
+        initial.notice = "analyzing"
+        initial.openedSavedRunID = id
+        initial.pendingDeletionID = id
+        let store = TestStore(initialState: initial) {
+            AnalyzePoseFeature()
+        } withDependencies: {
+            self.forbidCloseSideEffects(&$0)
+        }
+
+        await store.send(.closeTapped)
+        #expect(store.state.session.kind == .running)
+        #expect(store.state.session.clip == clip)
+        #expect(store.state.playhead == 0.5)
+        #expect(store.state.pendingDeletionID == id)
+        #expect(store.state.openedSavedRunID == id)
+    }
+
+    @Test func closeWhileEmptyDoesNothing() async {
+        let store = TestStore(initialState: AnalyzePoseFeature.State()) {
+            AnalyzePoseFeature()
+        } withDependencies: {
+            self.forbidCloseSideEffects(&$0)
+        }
+
+        await store.send(.closeTapped)
+        #expect(store.state.screen == .empty)
+        #expect(store.state.session.clip == nil)
+        #expect(store.state.session.run == nil)
+    }
+
+    @Test func closeClearsPendingDeletionWithoutRemovingTheRun() async {
+        let id = UUID(uuidString: "00000000-0000-0000-0000-000000000063")!
+        let summary = SavedRunSummary(
+            id: id,
+            displayName: "pending.mov",
+            finishedAt: now,
+            clipDuration: 2
+        )
+        var initial = reviewState(playhead: 1, isPlaying: true)
+        initial.notice = "evidenceNotSaved"
+        initial.openedSavedRunID = id
+        initial.pendingDeletionID = id
+        initial.savedRuns = [summary]
+        let store = TestStore(initialState: initial) {
+            AnalyzePoseFeature()
+        } withDependencies: {
+            self.forbidCloseSideEffects(&$0)
+        }
+
+        await store.send(.closeTapped) {
+            $0.session.clip = nil
+            $0.session.run = nil
+            $0.isPlaying = false
+            $0.playhead = 0
+            $0.notice = nil
+            $0.openedSavedRunID = nil
+            $0.pendingDeletionID = nil
+        }
+        #expect(store.state.pendingDeletionID == nil)
+        #expect(store.state.savedRuns.map(\.id) == [id])
+        #expect(store.state.screen == .empty)
+    }
+
+    @Test func closeDropsAnUnsavedReviewWithoutWriting() async {
+        var initial = reviewState(playhead: 1, isPlaying: true)
+        initial.session.evidenceMissing = true
+        initial.openedSavedRunID = nil
+        initial.notice = "evidenceNotSaved"
+        let store = TestStore(initialState: initial) {
+            AnalyzePoseFeature()
+        } withDependencies: {
+            self.forbidCloseSideEffects(&$0)
+        }
+
+        await store.send(.closeTapped) {
+            $0.session.clip = nil
+            $0.session.run = nil
+            $0.session.evidenceMissing = false
+            $0.isPlaying = false
+            $0.playhead = 0
+            $0.notice = nil
+        }
+        #expect(store.state.openedSavedRunID == nil)
+        #expect(store.state.session.evidenceMissing == false)
+        #expect(store.state.screen == .empty)
+    }
+
+    private func forbidCloseSideEffects(_ dependencies: inout DependencyValues) {
+        dependencies.date = .constant(now)
+        dependencies.persistenceClient.remove = { _ in
+            Issue.record("persistenceClient.remove was called")
+            return false
+        }
+        dependencies.persistenceClient.writeFinished = { _, _ in
+            Issue.record("persistenceClient.writeFinished was called")
+            return SavedRunWrite(id: nil, evidenceMissing: true)
+        }
+        dependencies.persistenceClient.open = { _ in
+            Issue.record("persistenceClient.open was called")
+            return .failure(.videoUnavailable)
+        }
+        dependencies.poseAnalysisClient.analyze = { _, _ in
+            Issue.record("poseAnalysisClient.analyze was called")
+            return AsyncThrowingStream { continuation in
+                continuation.finish(throwing: PoseAnalysisError.unimplemented)
+            }
+        }
+    }
+
     private func reviewState(
         playhead: TimeInterval = 0,
         isPlaying: Bool = false,
