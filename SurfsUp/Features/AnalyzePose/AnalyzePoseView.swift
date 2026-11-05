@@ -73,6 +73,9 @@ struct AnalyzePoseView: View {
             savedReviewsSection
         case .ready:
             chooseButton
+            Button("closeReview") { store.send(.closeTapped) }
+                .buttonStyle(.bordered)
+                .frame(minHeight: AppConstants.UI.controlHeight)
             startButton
             savedReviewsSection
         case .running:
@@ -113,12 +116,18 @@ struct AnalyzePoseView: View {
                 }
             }
             chooseButton
+            Button("closeReview") { store.send(.closeTapped) }
+                .buttonStyle(.bordered)
+                .frame(minHeight: AppConstants.UI.controlHeight)
             savedReviewsSection
         case .failed:
             Text(LocalizedStringKey(store.session.run?.failure ?? "analysisFailed"))
                 .font(Typography.body)
                 .multilineTextAlignment(.center)
             chooseButton
+            Button("closeReview") { store.send(.closeTapped) }
+                .buttonStyle(.bordered)
+                .frame(minHeight: AppConstants.UI.controlHeight)
             savedReviewsSection
         }
     }

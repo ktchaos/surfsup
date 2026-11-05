@@ -81,6 +81,7 @@ struct AnalyzePoseFeature {
         case deleteDeclined
         case deleteConfirmed
         case deleteResolved(id: UUID, removed: Bool, runs: [SavedRunSummary])
+        case closeTapped
         case delegate(Delegate)
     }
 
@@ -374,6 +375,22 @@ struct AnalyzePoseFeature {
                     state.notice = "deleteFailed"
                 }
                 return .none
+
+            case .closeTapped:
+                switch state.session.kind {
+                case .ready, .review, .failed:
+                    state.session.clip = nil
+                    state.session.run = nil
+                    state.session.evidenceMissing = false
+                    state.isPlaying = false
+                    state.playhead = 0
+                    state.notice = nil
+                    state.openedSavedRunID = nil
+                    state.pendingDeletionID = nil
+                    return .none
+                case .running, .empty:
+                    return .none
+                }
 
             case .delegate:
                 return .none
